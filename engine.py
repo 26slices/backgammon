@@ -3,6 +3,8 @@ This class is for stroing the current state of the game. It will also determine
 all legal moves and provide a game log.
 """
 import random
+import numpy as np
+from collections import Counter
 
 
 class GameState():
@@ -13,15 +15,15 @@ class GameState():
           that position. The exception is the bar which has 0 pieces initially
           but can hold pips from both players simultaneously. '''
 
-        self.board = [
-            ('w', 2), ('-', 0), ('-', 0), ('-', 0), ('-', 0), ('r', 5),
-            ('-', 0), ('r', 3), ('-', 0), ('-', 0), ('-', 0), ('w', 5),
-            ('r', 5), ('-', 0), ('-', 0), ('-', 0), ('w', 3), ('-', 0),
-            ('w', 5), ('-', 0), ('-', 0), ('-', 0), ('-', 0), ('r', 2),
-            (0, 0),  # the bar
-            ('r', 0),  # red player's home board
-            ('w', 0)  # white player's home board
-        ]
+        self.board = [('r', 0),  # red home board
+                      ('w', 2), ('-', 0), ('-', 0), ('-', 0), ('-', 0), ('r', 5),
+                      ('-', 0), ('r', 3), ('-', 0), ('-', 0), ('-', 0), ('w', 5),
+                      ('r', 5), ('-', 0), ('-', 0), ('-', 0), ('w', 3), ('-', 0),
+                      ('w', 5), ('-', 0), ('-', 0), ('-', 0), ('-', 0), ('r', 2),
+                      ('w', 0)  # white home board
+                      ('r', 0),  # red bar
+                      ('w', 0),  # white bar
+                      ]
 
         self.score = (0, 0)
 
@@ -35,7 +37,7 @@ class GameState():
 
         self.cube_owner = None
 
-        self.white_turn = False
+        self.is_white_turn = None
 
         self.dice = None
 
@@ -43,27 +45,29 @@ class GameState():
 
         self.move_log = []
 
+        self.turn_number = 0
+
     @property
     def num_home(self):
-        return (self.board[-1][1], self.board[-2][1])
+        return (self.board[-1], self.board[-2])
 
     @property
     def bar(self):
-        return self.board[-3]
+        return (self.board[-3], self.board[-4])
 
     @property
     def white_on_bar(self):
-        return self.bar[0] > 0
+        return self.bar[0][1] > 0
 
     @property
     def red_on_bar(self):
-        return self.bar[1] > 0
+        return self.bar[1][1] > 0
 
     @property
     def turn(self):
-        if self.white_turn:
-            return 'White'
-        return 'Red'
+        if self.is_white_turn:
+            return 'w'
+        return 'r'
 
     def show_state(self):
         '''Prints all attributes of the current state of the game.'''
@@ -90,7 +94,7 @@ class GameState():
         while dice[0] == dice[1]:
             dice = (random.randint(1, 6), random.randint(1, 6))
         self.dice = dice
-        self.white_turn = dice[0] > dice[1]
+        self.is_white_turn = dice[0] > dice[1]
 
     def make_decision(self, decision):
         '''
@@ -109,13 +113,41 @@ class GameState():
     def make_move(self, move):
         '''
         takes an instance of Move class and updates the board to reflect the move,
-        and updates whose turn it is
+        inputs the move into the move log and updates whose turn it is.
         '''
+        if self.turn != move.player:
+            raise (f"It's {self.turn}'s turn!")
+
+        if self.is_white_turn:
+            self.turn_number += 1
+        # update the positions of where the pips are moving from
         for start_position in move.start_positions:
             self.board[start_position][1] -= 1
+            if self.board[start_position][1] == 0:
+                self.board[start_position][0] = '-'
+
+        # update the positions of where the pips are moving to
         for end_position in move.end_positions:
-            self.board[end_position][1] -= 1
-        self.white_turn = not self.white_turn
+            if self.board[end_position][0] in (self.turn, '-'):
+                self.board[end_position][1] += 1
+            self.board[end_position][0] = self.turn
+
+        # **** still need to update the log here ****
+
+        # update whose turn it is
+        self.is_white_turn = not self.is_white_turn
+
+    def move_to_backgammon_notation(self, move):
+        '''
+        converts the computer readable backgammon moves into standard bg notation
+        '''
+        if not move.player == self.is_white_turn:
+            bg_notation = Counter(move.pip_moves)
+        else:
+            transformed_pip_moves = [
+                tuple(np.abs(np.subtract(pip_move, (25, 25)))) for pip_move in x.pip_moves]
+            bg_notation = Counter(transformed_pip_moves)
+        return bg_notation
 
 
 class Decision():
@@ -129,7 +161,18 @@ class Decision():
 
 
 class Move():
-    def __init__(self, start_positions, end_positions):
+    def __init__(self, player, pip_moves):
         self.id = 'generate_unique_id'
-        self.start_positions = start_positions
-        self.end_positions = end_positions
+        self.player = player
+        self.pip_moves = pip_moves
+        self.start_positions = [pip_move[0] for pip_move in pip_moves]
+        self.end_positions = [pip_move[1] for pip_move in pip_moves]
+
+    def backgammon_notation(start_positions, end_positions):
+        pass
+
+
+x = Move('w', [(1, 2), (3, 4), (5, 6)])
+
+print(x.player, [tuple(np.subtract(pip_move, (1, 1))) for pip_move in x.pip_moves],
+      x.start_positions, x.end_positions)
