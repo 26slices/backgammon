@@ -8,21 +8,21 @@ from collections import Counter
 
 
 class GameState():
-    def __init__(self, first_to):
+    def __init__(self, first_to, is_white_turn=None):
         ''' self.board describes how many and whose pieces are on a given point on
          the board. The first item in each tuple represents the player whose
          pieces are in that position and the second is the number of checkers in
           that position. The exception is the bar which has 0 pieces initially
           but can hold pips from both players simultaneously. '''
 
-        self.board = [('r', 0),  # red home board
-                      ('w', 2), ('-', 0), ('-', 0), ('-', 0), ('-', 0), ('r', 5),
-                      ('-', 0), ('r', 3), ('-', 0), ('-', 0), ('-', 0), ('w', 5),
-                      ('r', 5), ('-', 0), ('-', 0), ('-', 0), ('w', 3), ('-', 0),
-                      ('w', 5), ('-', 0), ('-', 0), ('-', 0), ('-', 0), ('r', 2),
-                      ('w', 0)  # white home board
-                      ('r', 0),  # red bar
-                      ('w', 0),  # white bar
+        self.board = [['r', 0],  # red home board
+                      ['w', 2], ['-', 0], ['-', 0], ['-', 0], ['-', 0], ['r', 5],
+                      ['-', 0], ['r', 3], ['-', 0], ['-', 0], ['-', 0], ['w', 5],
+                      ['r', 5], ['-', 0], ['-', 0], ['-', 0], ['w', 3], ['-', 0],
+                      ['w', 5], ['-', 0], ['-', 0], ['-', 0], ['-', 0], ['r', 2],
+                      ['w', 0],  # white home board
+                      ['r', 0],  # red bar
+                      ['w', 0],  # white bar
                       ]
 
         self.score = (0, 0)
@@ -37,9 +37,9 @@ class GameState():
 
         self.cube_owner = None
 
-        self.is_white_turn = None
-
         self.dice = None
+
+        self.is_white_turn = is_white_turn
 
         self.cube_decision = False
 
@@ -110,13 +110,25 @@ class GameState():
         '''
         self.dice = (random.randint(1, 6), random.randint(1, 6))
 
+    def move_to_backgammon_notation(self, move):
+        '''
+        converts the computer readable backgammon moves into standard bg notation
+        '''
+        if move.player == 'r':
+            bg_notation = Counter(move.pip_moves)
+        else:
+            transformed_pip_moves = [
+                tuple(np.abs(np.subtract(pip_move, (25, 25)))) for pip_move in move.pip_moves]
+            bg_notation = Counter(transformed_pip_moves)
+        return bg_notation
+
     def make_move(self, move):
         '''
         takes an instance of Move class and updates the board to reflect the move,
         inputs the move into the move log and updates whose turn it is.
         '''
         if self.turn != move.player:
-            raise (f"It's {self.turn}'s turn!")
+            raise ("It's {}'s turn!".format(self.turn))
 
         if self.is_white_turn:
             self.turn_number += 1
@@ -132,22 +144,11 @@ class GameState():
                 self.board[end_position][1] += 1
             self.board[end_position][0] = self.turn
 
-        # **** still need to update the log here ****
+        # update the move log
+        self.move_log.append(self.move_to_backgammon_notation(move))
 
         # update whose turn it is
         self.is_white_turn = not self.is_white_turn
-
-    def move_to_backgammon_notation(self, move):
-        '''
-        converts the computer readable backgammon moves into standard bg notation
-        '''
-        if not move.player == self.is_white_turn:
-            bg_notation = Counter(move.pip_moves)
-        else:
-            transformed_pip_moves = [
-                tuple(np.abs(np.subtract(pip_move, (25, 25)))) for pip_move in x.pip_moves]
-            bg_notation = Counter(transformed_pip_moves)
-        return bg_notation
 
 
 class Decision():
@@ -167,12 +168,3 @@ class Move():
         self.pip_moves = pip_moves
         self.start_positions = [pip_move[0] for pip_move in pip_moves]
         self.end_positions = [pip_move[1] for pip_move in pip_moves]
-
-    def backgammon_notation(start_positions, end_positions):
-        pass
-
-
-x = Move('w', [(1, 2), (3, 4), (5, 6)])
-
-print(x.player, [tuple(np.subtract(pip_move, (1, 1))) for pip_move in x.pip_moves],
-      x.start_positions, x.end_positions)
