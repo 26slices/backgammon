@@ -20,10 +20,9 @@ class GameState():
                       ['-', 0], ['r', 3], ['-', 0], ['-', 0], ['-', 0], ['w', 5],
                       ['r', 5], ['-', 0], ['-', 0], ['-', 0], ['w', 3], ['-', 0],
                       ['w', 5], ['-', 0], ['-', 0], ['-', 0], ['-', 0], ['r', 2],
-                      ['w', 0],  # white home board
-                      ['r', 0],  # red bar
-                      ['w', 0]  # white bar
+                      ['w', 0]  # white home board
                       ]
+        self.bar = {'w': 0, 'r': 0}
 
         self.score = (0, 0)
 
@@ -52,10 +51,6 @@ class GameState():
         return (self.board[-3], self.board[0])
 
     @property
-    def bar(self):
-        return (self.board[-1], self.board[-2])
-
-    @property
     def player_on_bar(self):
         return self.bar[0][1] if self.is_white_turn else self.bar[1][1] > 0
 
@@ -68,6 +63,12 @@ class GameState():
         if self.is_white_turn:
             return 'w'
         return 'r'
+
+    @property
+    def not_turn(self):
+        if self.is_white_turn:
+            return 'r'
+        return 'w'
 
     def show_state(self):
         '''Prints all attributes of the current state of the game.'''
@@ -130,6 +131,9 @@ class GameState():
         for end_position in move.end_positions:
             if self.board[end_position][0] in (self.turn, '-'):
                 self.board[end_position][1] += 1
+            else:
+                self.bar[self.not_turn] += 1
+
             self.board[end_position][0] = self.turn
 
         # update the move log
