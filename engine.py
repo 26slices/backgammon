@@ -51,18 +51,14 @@ class GameState():
         return (self.board[-3], self.board[0])
 
     @property
-    def player_on_bar(self):
-        return self.bar[0][1] if self.is_white_turn else self.bar[1][1] > 0
-
-    @property
-    def red_on_bar(self):
-        return self.bar[1][1] > 0
-
-    @property
     def turn(self):
         if self.is_white_turn:
             return 'w'
         return 'r'
+
+    @property
+    def player_on_bar(self):
+        return self.bar[self.turn] > 0
 
     @property
     def not_turn(self):
