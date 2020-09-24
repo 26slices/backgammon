@@ -22,7 +22,7 @@ class GameState():
                       ['w', 5], ['-', 0], ['-', 0], ['-', 0], ['-', 0], ['r', 2],
                       ['w', 0],  # white home board
                       ['r', 0],  # red bar
-                      ['w', 0],  # white bar
+                      ['w', 0]  # white bar
                       ]
 
         self.score = (0, 0)
@@ -49,15 +49,15 @@ class GameState():
 
     @property
     def num_home(self):
-        return (self.board[-1], self.board[-2])
+        return (self.board[-3], self.board[0])
 
     @property
     def bar(self):
-        return (self.board[-3], self.board[-4])
+        return (self.board[-1], self.board[-2])
 
     @property
-    def white_on_bar(self):
-        return self.bar[0][1] > 0
+    def player_on_bar(self):
+        return self.bar[0][1] if self.is_white_turn else self.bar[1][1] > 0
 
     @property
     def red_on_bar(self):
@@ -110,25 +110,13 @@ class GameState():
         '''
         self.dice = (random.randint(1, 6), random.randint(1, 6))
 
-    def move_to_backgammon_notation(self, move):
-        '''
-        converts the computer readable backgammon moves into standard bg notation
-        '''
-        if move.player == 'r':
-            bg_notation = Counter(move.pip_moves)
-        else:
-            transformed_pip_moves = [
-                tuple(np.abs(np.subtract(pip_move, (25, 25)))) for pip_move in move.pip_moves]
-            bg_notation = Counter(transformed_pip_moves)
-        return bg_notation
-
     def make_move(self, move):
         '''
         takes an instance of Move class and updates the board to reflect the move,
         inputs the move into the move log and updates whose turn it is.
         '''
         if self.turn != move.player:
-            raise ("It's {}'s turn!".format(self.turn))
+            raise Exception("It's {}'s turn!".format(self.turn))
 
         if self.is_white_turn:
             self.turn_number += 1
@@ -149,6 +137,24 @@ class GameState():
 
         # update whose turn it is
         self.is_white_turn = not self.is_white_turn
+
+    def move_to_backgammon_notation(self, move):
+        '''
+        converts the computer readable backgammon moves into standard bg notation
+        '''
+        if move.player == 'r':
+            bg_notation = Counter(move.pip_moves)
+        else:
+            transformed_pip_moves = [
+                tuple(np.abs(np.subtract(pip_move, (25, 25)))) for pip_move in move.pip_moves]
+            bg_notation = Counter(transformed_pip_moves)
+        return bg_notation
+
+    def get_legal_moves(self):
+        '''
+        finds the legal moves of a given game state
+        '''
+        pass
 
 
 class Decision():
