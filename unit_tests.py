@@ -3,10 +3,13 @@ from engine import GameState, Decision, Move
 
 
 class TestEngine(unittest.TestCase):
-    w = GameState(7, is_white_turn=True)
+    w = GameState()
+    setattr(w, 'is_white_turn', True)
     w_move = Move('w', [(1, 2), (1, 2)])
 
-    r = GameState(7, is_white_turn=False)
+    r = GameState()
+    setattr(r, 'is_white_turn', False)
+
     r_move = Move('r', [(6, 2), (8, 2)])
 
     setattr(r, 'board', [['r', 0],  # red home board
