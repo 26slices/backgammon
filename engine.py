@@ -8,7 +8,7 @@ from collections import Counter
 
 
 class GameState():
-    def __init__(self, first_to, is_white_turn=None):
+    def __init__(self, first_to=7):
         ''' self.board describes how many and whose pieces are on a given point on
          the board. The first item in each tuple represents the player whose
          pieces are in that position and the second is the number of checkers in
@@ -38,7 +38,7 @@ class GameState():
 
         self.dice = None
 
-        self.is_white_turn = is_white_turn
+        self.is_white_turn = None
 
         self.cube_decision = False
 
@@ -48,13 +48,11 @@ class GameState():
 
     @property
     def num_home(self):
-        return (self.board[-3], self.board[0])
+        return (self.board[-1], self.board[0])
 
     @property
     def turn(self):
-        if self.is_white_turn:
-            return 'w'
-        return 'r'
+        return 'w' if self.is_white_turn else 'r'
 
     @property
     def player_on_bar(self):
@@ -62,14 +60,13 @@ class GameState():
 
     @property
     def not_turn(self):
-        if self.is_white_turn:
-            return 'r'
-        return 'w'
+        return 'r' if self.is_white_turn else 'w'
 
     def show_state(self):
         '''Prints all attributes of the current state of the game.'''
 
         state = """ Board: {};
+                    Bar: {};
                       Score: {};
                       first to: {};
                       Crawford: {};
@@ -77,7 +74,7 @@ class GameState():
                       Cube value: {};
                       Cube owner: {};
                       Turn owner: {},
-                      Dice: {}""".format(self.board, self.score, self.first_to,
+                      Dice: {}""".format(self.board, self.bar, self.score, self.first_to,
                                          self.crawford, self.post_crawford,
                                          self.cube, self.cube_owner, self.turn,
                                          self.dice)
