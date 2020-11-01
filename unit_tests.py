@@ -1,9 +1,13 @@
 import unittest
+# NOTE Descision is imported but not used. Would advise setting up your linter
+# to complain about unused imports if you haven't already. Unused imports can
+# get messy over time.
 from engine import GameState, Decision, Move
 
 
 class TestEngine(unittest.TestCase):
     w = GameState()
+    # Why use `setattr` here? Could you not do `w.is_white_turn = True`
     setattr(w, 'is_white_turn', True)
     w_move = Move('w', [(1, 2), (1, 2)])
 
