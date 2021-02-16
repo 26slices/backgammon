@@ -12,10 +12,10 @@ class TestEngine(unittest.TestCase):
         self.assertIsNone(self.w.cube_owner)
         self.assertEqual(self.w.turn_number, 0)
 
-    def test_make_move(self):
-        self.w.make_move(self.w_move)
-        self.assertEqual(self.w.board[1], ['-', 0])
-        self.assertEqual(self.w.board[2], ['w', 2])
+    # def test_make_move(self):
+    #     self.w.make_move(self.w_move)
+    #     self.assertEqual(self.w.board[1], ['-', 0])
+    #     self.assertEqual(self.w.board[2], ['w', 2])
 
     def move_to_backgammon_notation(self):
         pass
@@ -23,5 +23,5 @@ class TestEngine(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(exit=False)
-    w = GameState()
-    print(w.show_state())
+    w_move = Move('r', [(1, 2), (1, 2)])
+    print(w_move.move_to_backgammon_notation())

@@ -318,34 +318,28 @@ class Move():
         self.start_positions = [pip_move[0] for pip_move in pip_moves]
         self.end_positions = [pip_move[1] for pip_move in pip_moves]
 
-    def __str__(self):
-        """
+    def move_to_backgammon_notation(self):
+        '''
         Converts the computer readable backgammon moves into standard bg
-        notation.
-        """
-        if self.player == 'r':
-            transformed_pip_moves = []
-            for pip_move in self.pip_moves:
-                if pip_move[0] == 25:
-                    transformed_pip_moves.append(('bar', pip_move[1]))
-                elif pip_move[1] == 0:
-                    transformed_pip_moves.append((pip_move[0], 'off'))
-                else:
-                    transformed_pip_moves.append(pip_move)
-            bg_notation = Counter(transformed_pip_moves)
-        else:
-            transformed_pip_moves = []
-            for pip_move in self.pip_moves:
-                if pip_move[0] == 0:
-                    transformed_pip_moves.append((
-                        'bar', np.abs(pip_move[1] - 25)))
-                elif pip_move[1] == 25:
-                    transformed_pip_moves.append(
-                        (np.abs(pip_move[0] - 25), 'off'))
-                else:
-                    transformed_pip_moves.append(
-                        tuple(np.abs(np.subtract(pip_move, (25, 25)))))
-            bg_notation = Counter(transformed_pip_moves)
+        notation. Need a mapping (Disctionaty) to individual pip moves
+        {}
+
+        '''
+        red_transforms = {0: 'home', 25: 'bar'}
+        for i in range(1, 25):
+            red_transforms[i] = i
+
+        white_transforms = {0: 'bar', 25: 'home'}
+        for i in range(1, 25):
+            white_transforms[i] = np.abs(i - 25)
+
+        transformations = {'w': white_transforms, 'r': red_transforms}
+
+        transformed_pip_moves = []
+        for pip_move in self.pip_moves:
+            transformed_pip_moves.append((transformations[self.player][pip_move[0]],
+                                          transformations[self.player][pip_move[1]]))
+        bg_notation = dict(Counter(transformed_pip_moves))
 
         return bg_notation
 
