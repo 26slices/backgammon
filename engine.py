@@ -385,6 +385,15 @@ class Space:
         '''
         Adds a piece to the position
         '''
+        if not self.is_available():
+            raise Exception('''
+                            {} is trying to the space with number:
+                            {}, occupant: {}, number_occupants:
+                            {}. This isn't possible!
+                            '''.format(move.player, self.number, self.occupant,
+                                       self.number_occupants)
+                            )
+
         self.number_occupants += 1
         self.occupant = move.player
 
