@@ -141,6 +141,13 @@ class GameState:
         for end_position in move.end_positions:
             for space in self.board:
                 if space.position_number == end_position:
+                    # remove a piece and add it to the bar
+                    # this assumes that the move is a legal move
+                    if space.occupant == self.not_turn:
+                        space.remove_piece()
+                        self.board[self.bar[self.not_turn]
+                                   ].number_occupants += 1
+
                     space.add_piece()
 
         # update the move log
@@ -310,7 +317,8 @@ class Move():
         '''
         a move is a list of tuples where the first element of each tuple
         gives the start position and the second element gives the end position
-        of a pip
+        of a pip. White's start moves must be in the range [0, 24] and end moves in range [1, 25].
+        Black's start moves must be in the range [1, 25] and end moves in range [0, 24].
         '''
         self.id = 'generate_unique_id'
         self.player = player
@@ -369,7 +377,7 @@ class Space:
 
     def remove_piece(self):
         '''
-        Removes a piece from the position
+        Removes a piece from the space
         '''
         self.number_occupants -= 1
         if self.number_occupants == 0 and self.is_outer_space:
@@ -377,24 +385,24 @@ class Space:
 
     def add_piece(self, move):
         '''
-        Adds a piece to the position
+        Adds a piece to the space
         '''
-        if not self.is_available():
-            raise Exception('''
-                            {} is trying to the space with number:
-                            {}, occupant: {}, number_occupants:
-                            {}. This isn't possible!
-                            '''.format(move.player, self.number, self.occupant,
-                                       self.number_occupants)
-                            )
+        # if not self.is_available():
+        #     raise Exception('''
+        #                     {} is trying to the space with number:
+        #                     {}, occupant: {}, number_occupants:
+        #                     {}. This isn't possible!
+        #                     '''.format(move.player, self.number, self.occupant,
+        #                                self.number_occupants)
+        #                     )
 
         self.number_occupants += 1
         self.occupant = move.player
 
-    def is_available(self, move):
-        '''
-        Determines if this position is available given the current move
-        '''
-        if self.occupant in [None, move.player] or self.number_occupants == 1:
-            return True
-        return False
+    # def is_available(self, move):
+    #     '''
+    #     Determines if this position is available given the current move
+    #     '''
+    #     if self.occupant in [None, move.player] or self.number_occupants == 1:
+    #         return True
+    #     return False
