@@ -1,3 +1,9 @@
+'''
+
+
+'''
+
+import copy
 import random
 from pprint import pprint
 import numpy as np
@@ -16,10 +22,10 @@ class GameState:
         the board. The first item in each tuple represents the player whose
         pieces are in that position and the second is the number of checkers in
         that position. The exception are the first and last elements
-        which describe one player's home board and the other player's bar
+        which describe one player's bearoff_zone and the other player's bar
         """
 
-        self.board = [Space(0, 'home', 'r'),
+        self.board = [Space(0, 'bearoff_zone', 'r'),
                       Space(0, 'bar', 'w'),
                       Space(1, 'outer', 'w', 2),
                       Space(2, 'outer'),
@@ -45,7 +51,7 @@ class GameState:
                       Space(22, 'outer'),
                       Space(23, 'outer'),
                       Space(24, 'outer', 'r', 2),
-                      Space(25, 'home', 'w'),
+                      Space(25, 'bearoff_zone', 'w'),
                       Space(25, 'bar', 'r')
                       ]
 
@@ -62,7 +68,7 @@ class GameState:
         self.move_log = []
 
     @property
-    def home_board(self):
+    def bearoff_zone(self):
         return {'w': self.board[-2], 'r': self.board[0]}
 
     @property
@@ -70,18 +76,37 @@ class GameState:
         return {'w': self.board[1], 'r': self.board[-1]}
 
     @property
+    def homeboard(self):
+        return {'w': range(19, 25), 'r': range(1, 7)}
+
+    @property
     def players_spaces(self):
-        white_spaces = [space for space in self.board if space.occupant == 'w']
-        red_spaces = [space for space in self.board if space.occupant == 'r']
+        '''
+        all spaces for each player. Note that bar space is first
+        '''
+        white_bar_space = [self.bar['w']]
+        white_spaces = [space for space in self.board if space.occupant ==
+                        'w' and space.space_type == 'outer']
+        white_spaces = white_bar_space + white_spaces
+
+        red_bar_space = [self.bar['r']]
+        red_spaces = [space for space in self.board if space.occupant ==
+                      'r' and space.space_type == 'outer']
+        red_spaces = red_bar_space + red_spaces
+
         return {'w': white_spaces, 'r': red_spaces}
 
-    # @property
-    # def bar_position(self):
-    #     return {'w': 0, 'r': 25}
+    @property
+    def all_in_homeboard(self):
+        white_spaces = self.players_spaces()['w']
+        red_spaces = self.players_spaces()['r']
 
-    # @property
-    # def home_position(self):
-    #     return {'w': 25, 'r': 0}
+        white_all_in_homeboard = all(
+            [space.position_number in self.homeboard()['w'] for space in white_spaces])
+        red_all_in_homeboard = all(
+            [space.position_number in self.homeboard()['r'] for space in red_spaces])
+
+        return {'w': white_all_in_homeboard, 'r': red_all_in_homeboard}
 
     @property
     def turn(self):
@@ -94,6 +119,19 @@ class GameState:
     @property
     def player_on_bar(self):
         return self.bar[self.turn].number_occupants > 0
+
+    @property
+    def dice_to_use(self):
+        """
+        Doubles self.dice if the player has rolled doubles
+        """
+        if self.dice[0] != self.dice[1]:
+            return [die for die in self.dice]
+        return [die[0] * 4]
+
+    @property
+    def board_size(self):
+        return len(self.board)
 
     def show_state(self):
         pprint(self.__dict__)
@@ -162,144 +200,140 @@ class GameState:
         """
         self.is_white_turn = not self.is_white_turn
 
-    def get_legal_moves(self, all_moves):
-        """
-        applies _get_longest_move and _get_largest_move to finds the legal moves of a given board.
-        input: list of all legal moves ignoring the edge cases.
-
-        EDGE CASES: - If the player has pips on the
-                        bar then they must be moved first.
-                    - If a player can only legally use one of his die then
-                        it must be the larger of the two die he can legally use.
-                    - The player must use as many of the die as he possibly can
-        """
-        pass
-
-    def _get_all_moves(self):
+    def get_all_moves(self):
         '''
-        Returns all moves given the dice without looking at the edge cases.
+        Gets all legal moves for the case that there are no doubles
         '''
-        all_moves = []
-        dice_to_use1 = self._get_dice_to_use()
-        positions1 = self._get_all_positions()
-        board_length = len(self.board)
-        is_doubles = len(set(dice_to_use1)) == 1
+        move_bank = []
+        die0 = self.dice[0]
+        die1 = self.dice[1]
 
-        for die1 in dice_to_use1:
-            for i1 in range(board_length):
-                if positions1[i1] > 0:
-                    if self._is_available_point(self._add_die_to_pip(i1, die1)):
-                        all_moves.append([i1, self._add_die_to_pip(i1, die1)])
-                        dice_to_use2 = dice_to_use1
-                        dice_to_use2.remove(die1)
-                        positions2 = positions1
-                        positions2[i1] -= 1
-                        positions2[self._add_die_to_pip(i1, die1)] += 1
+        move_bank += self._find_moves_for_dice_order(die0, die1)
+        move_bank += self._find_moves_for_dice_order(die1, die0)
 
-                        for die2 in dice_to_use2:
-                            for i2 in range(board_length):
-                                if positions2[i2] > 0:
-                                    if self._is_available_point(self._add_die_to_pip(i2, die2)):
-                                        all_moves.append(
-                                            [i2, self._add_die_to_pip(i2, die2)])
-                                        dice_to_use3 = dice_to_use2
-                                        dice_to_use3.remove(die2)
-                                        positions3 = positions2
-                                        positions3[i2] -= 1
-                                        positions3[self._add_die_to_pip(
-                                            i2, die2)] += 1
+        return move_bank
 
-                                        if not is_doubles:
-                                            # if the dice isn't doubles then the next 2 for loops don't apply
-                                            continue
+    def _find_moves_for_dice_order(self, die0, die1):
+        all_start_positions = self.players_spaces()[self.turn]
+        move_bank = []
 
-                                        for die3 in dice_to_use3:
-                                            for i3 in range(board_length):
-                                                if positions3[i3] > 0:
-                                                    if self._is_available_point(self._add_die_to_pip(i3, die3)):
-                                                        all_moves.append(
-                                                            [i3, self._add_die_to_pip(i3, die3)])
-                                                        dice_to_use4 = dice_to_use3
-                                                        dice_to_use4.remove(
-                                                            die3)
-                                                        positions4 = positions3
-                                                        positions4[i3] -= 1
-                                                        positions4[self._add_die_to_pip(
-                                                            i3, die3)] += 1
+        for space0 in all_start_positions:
+            move_and_updated_start_positions0 = self.find_move_and_update_start_positions(
+                space0, die0, all_start_positions)
+            move0 = move_and_updated_start_positions0['move']
+            updated_start_positions0 = move_and_updated_start_positions0['updated_start_positions']
+            if move0:
+                move_bank.append([move0])
+                for space1 in updated_start_positions0:
+                    move_and_updated_start_positions1 = self.find_move_and_update_start_positions(
+                        space1, die1, updated_start_positions0)
+                    move1 = move_and_updated_start_positions1['move']
+                    updated_start_positions1 = move_and_updated_start_positions1[
+                        'updated_start_positions']
+                    if move1:
+                        move_bank.append([move0, move1])
+                    # if you're on the bar then you have to move checker off the bar so
+                    # no need to look through other points
+                    if space1.space_type == 'bar' or updated_start_positions1[0]:
+                        break
+            # if you're on the bar then you have to move checker off the bar so
+            # no need to look through other points
+            if space0.space_type == 'bar':
+                break
 
-                                                        for die4 in dice_to_use4:
-                                                            for i4 in range(board_length):
-                                                                if positions4[i4] > 0:
-                                                                    if self._is_available_point(self._add_die_to_pip(i4, die4)):
-                                                                        all_moves.append(
-                                                                            [i4, self._add_die_to_pip(i4, die4)])
+        # if you can use both die, you must use both die
+        both_die_used = max([len(move) for move in move_bank]) == 2
+        if both_die_used:
+            move_bank = [move for move in move_bank if len(move) == 2]
 
-        # return just the unique moves found
-        return list(set(all_moves))
+        move_bank = self._get_largest_move(move_bank)
 
-    def _get_all_moves_from_bar(self):
-        """
-        When the player has pips on the bar get all the moves that involve
-        moving pips from the bar. Should use this at the top of _get_all_moves
-        to improve its efficiency
-        """
-        pass
+        return move_bank
+
+    def find_move_and_update_start_positions(self, space0, die, start_positions):
+        end_space = [space for space in self.board if
+                     space.position_number == self._add_die_to_space(
+                         space0, die)
+                     and space.space_type != 'bar'][0]
+        if self._is_available_space(end_space):
+            move = (space0, end_space)
+
+            # update the list of positions to look at
+            # have to be careful not to update any of the actual spaces
+            updated_start_positions = copy.copy(start_positions)
+            end_space = copy.copy(end_space)
+            end_space.add_piece()
+            updated_start_positions.append(end_space)
+
+            updated_start_positions.remove(space0)
+            space0 = copy.copy(space0)
+            space0.remove_piece()
+            # if there are still pips on that space we want to consider it
+            # use insert so we can put it at the start and can consider pips on the bar
+            if space0.number_occupants >= 1:
+                updated_start_positions.insert(0, space0)
+
+            return {'move': move, 'updated_start_positions': updated_start_positions}
+
+        return {'move': None, 'updated_start_positions': None}
 
     def _get_largest_move(self, all_moves):
         """
         If a player can only legally use one of his die then filters the
         list of moves by removing ones not using the larger of the two die.
         """
-        pass
+        max_move_length = max([move.move_length for move in all_moves])
+        moves = [move for move in all_moves if move.move_length == max_move_length]
 
-    def _get_longest_move(self, all_moves):
-        """
-        Applies edge case that the player must use as many of the die as he
-        possibly can.
-        """
-        pass
+        return moves
 
-    def _get_all_positions(self):
+    def _is_available_space(self, space):
         """
-        Returns the number of pips the turnowner has on each point.
-        The first entry is their bar. Doesn't include their homeboard
+        Determines if a given space is available for the player whose turn it is
         """
-        all_positions = [self.bar[self.turn]]
-        board_size = len(self.board)
-        for i in range(1, board_size):
-            if self.board[i][0] == self.turn:
-                all_positions.append(self.bar_position[i][1])
-            else:
-                all_positions.append(0)
-        return all_positions
 
-    def _get_dice_to_use(self):
-        """
-        Doubles self.dice if the player has rolled doubles
-        """
-        if self.dice[0] != self.dice[1]:
-            return [die for die in self.dice]
-        return [die for die in self.dice * 2]
-
-    def _is_available_point(self, point):
-        """
-        Determines if a given point is available for the player whose turn it is
-        """
-        # when trying to evaluate a point not in the board return False
-        # rather than throwing an error
-        if point < 0 or point > 24:
+        if (space.position_number not in range(26) or
+            space.space_type == 'bar' or
+            (space.position_number == self.bearoff_zone[self.not_turn].position_number
+                and space.space_type == 'bearoff_zone') or
+            (space.number_occupants > 1 and space.occupant == self.not_turn) or
+                (self.all_in_homeboard[self.turn] is False and space.space_type == 'bearoff_zone')):
             return False
-        elif self.board[point][0] in (self.turn, '-') or self.board[point] == [self.not_turn, 1]:
+        else:
             return True
-        return False
 
-    def _add_die_to_pip(self, die, pip):
+    def _add_die_to_space(self, space, die):
+        """
+        Adds die to a space, accounting for when the space is the furthest from
+        bearoff and all spaces are in bearoff zone
+        """
+
+        if not self.all_in_homeboard()[self.turn]:
+            return self.apply_correct_fn_die_to_space(space, die)
+
+        else:
+            players_spaces = self.players_spaces[self.turn]
+            player_bearoff_zone = self.bearoff_zone[self.turn]
+
+            distance_from_bar = abs(
+                space.position_number - player_bearoff_zone.position_number)
+            max_distance_from_bar = max(
+                [abs(player_space.position_number - player_bearoff_zone.position_number) for player_space in players_spaces])
+            if distance_from_bar == max_distance_from_bar and self.apply_correct_fn_die_to_space(space, die) not in range(26):
+                return player_bearoff_zone.position_number
+            else:
+                return self.apply_correct_fn_die_to_space(space, die)
+
+    def apply_correct_fn_die_to_space(self, space, die):
         """
         Applies the correct function (add/subtract) to a pip
         """
         if self.turn == 'w':
-            return pip + die
-        return pip - die
+            space.position_number += die
+        else:
+            space.position_number -= die
+
+        return space.position_number
 
 
 class Decision():
@@ -326,6 +360,15 @@ class Move():
         self.start_positions = [pip_move[0] for pip_move in pip_moves]
         self.end_positions = [pip_move[1] for pip_move in pip_moves]
 
+    @property
+    def move_length(self):
+        '''
+        Length of a move
+        '''
+        move_length = sum([abs(pip_move[0] - pip_move[1])
+                           for pip_move in self.pip_moves()])
+        return move_length
+
     def move_to_backgammon_notation(self):
         '''
         Converts the computer readable backgammon moves into standard bg
@@ -333,11 +376,11 @@ class Move():
         {}
 
         '''
-        red_transforms = {0: 'home', 25: 'bar'}
+        red_transforms = {0: 'bearoff_zone', 25: 'bar'}
         for i in range(1, 25):
             red_transforms[i] = i
 
-        white_transforms = {0: 'bar', 25: 'home'}
+        white_transforms = {0: 'bar', 25: 'bearoff_zone'}
         for i in range(1, 25):
             white_transforms[i] = np.abs(i - 25)
 
@@ -357,52 +400,26 @@ class Space:
     Each position on the board will be an instance of a space class
     '''
 
-    def __init__(self, position_number, space_type, occupant=None, number_occupants=0):
+    def __init__(self, position_number, space_type, occupant=None,
+                 number_occupants=0, red_homeboard=False, white_homeboard=False):
         self.position_number = position_number
         self.space_type = space_type
         self.occupant = occupant
         self.number_occupants = number_occupants
 
-    @property
-    def is_outer_space(self):
-        return self.space_type == 'outer'
-
-    @property
-    def is_home_space(self):
-        return self.space_type == 'home'
-
-    @property
-    def is_bar_space(self):
-        return self.space_type == 'bar'
-
+    @ property
     def remove_piece(self):
         '''
         Removes a piece from the space
         '''
         self.number_occupants -= 1
-        if self.number_occupants == 0 and self.is_outer_space:
+        if self.number_occupants == 0 and self.space_type == 'outer':
             self.occupant = None
 
     def add_piece(self, move):
         '''
         Adds a piece to the space
         '''
-        # if not self.is_available():
-        #     raise Exception('''
-        #                     {} is trying to the space with number:
-        #                     {}, occupant: {}, number_occupants:
-        #                     {}. This isn't possible!
-        #                     '''.format(move.player, self.number, self.occupant,
-        #                                self.number_occupants)
-        #                     )
 
         self.number_occupants += 1
         self.occupant = move.player
-
-    # def is_available(self, move):
-    #     '''
-    #     Determines if this position is available given the current move
-    #     '''
-    #     if self.occupant in [None, move.player] or self.number_occupants == 1:
-    #         return True
-    #     return False
