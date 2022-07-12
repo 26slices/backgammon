@@ -1,6 +1,8 @@
 import unittest
 from engine import GameState, Decision, Move
-from constants import ALL_ROLLS, TEST_ONE_ON_BAR, TEST_TWO_ON_BAR, TEST_LARGESE_MOVE, STARTING_BOARD
+from constants import (ALL_ROLLS, TEST_ONE_ON_BAR, TEST_TWO_ON_BAR,
+                      TEST_LARGESE_MOVE, STARTING_BOARD, TEST_NO_LEGAL_MOVES_BAR,
+                      TEST_NO_LEGAL_MOVES_BLOCKED)
 
         # NEED [(13, 8), (8, 5)] and [(13, 10), (10, 5)] to be the same when neither involve a hit. Can ignore for now.
         # SWAP 'w' AND 'r' for white and red
@@ -15,53 +17,50 @@ class TestEngine(unittest.TestCase):
         self.assertEqual(self.w.turn_number, 0)
 
         print('is whites turn: {}'.format(self.w.is_white_turn))
-    #     # print(self.w.get_all_moves())
-
-    # def test_legal_moves(self):
-    #     '''
-    #     finds legal moves for all opening rolls. Eventually will loop through roll for roll in ALL_ROLLS.
-    #     '''
-    #     print('Dice: {}'.format(self.w.dice))
-    #     print('is whites turn: {}'.format(self.w.is_white_turn))
-    #     test_space = self.w.players_spaces[self.w.turn][0]
-
-    #     print('test_space position number: {}'.format(test_space.position_number))
-    #     die = self.w.dice[0]
-    #     print('adding first die ({}) to test_space gives you: {}'.format(die, self.w._add_die_to_space(test_space, die)))
-
-    #     self.w.get_all_moves()
 
 
     def test_moves(self):
 
         r = GameState()
-        setattr(r, 'is_white_turn', True)
+        setattr(r, 'is_white_turn', False)
         setattr(r, 'board', TEST_LARGESE_MOVE)
         setattr(r, 'dice', [5, 4])
 
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
         print('****************** Moves in bg notation: {}'.format(moves))
-        # self.assertEqual(moves, [[(21, 16)]])
+        # # self.assertEqual(moves, [[(21, 16)]])
 
         setattr(r, 'board', TEST_TWO_ON_BAR)
         setattr(r, 'is_white_turn', False)
+        setattr(r, 'dice', [5, 4])
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
         print('****************** Moves in bg notation: {}'.format(moves))
-        # self.assertEqual(moves, [[('bar', 21)]])
+        self.assertEqual(moves, [[('bar', 21)]])
 
 
         setattr(r, 'board', TEST_ONE_ON_BAR)
         setattr(r, 'is_white_turn', False)
+        setattr(r, 'dice', [5, 4])
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
         print('****************** Moves in bg notation: {}'.format(moves))
-        # self.assertEqual(moves, [[('bar', 21), (6, 1)], [('bar', 21), (21, 16)]])
-
+        # # self.assertEqual(moves, [[('bar', 21), (6, 1)], [('bar', 21), (21, 16)]])
 
 
         setattr(r, 'board', STARTING_BOARD)
-        # setattr(r, 'dice', [5, 3])
+        setattr(r, 'dice', [5, 3])
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
+        print('****************** Moves in bg notation: {}'.format(moves))
 
+        setattr(r, 'board', TEST_NO_LEGAL_MOVES_BAR)
+        setattr(r, 'is_white_turn', True)
+        setattr(r, 'dice', [5, 6])
+        moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
+        print('****************** Moves in bg notation: {}'.format(moves))
+
+        setattr(r, 'board', TEST_NO_LEGAL_MOVES_BLOCKED)
+        setattr(r, 'is_white_turn', True)
+        setattr(r, 'dice', [1, 1])
+        moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
         print('****************** Moves in bg notation: {}'.format(moves))
 
 

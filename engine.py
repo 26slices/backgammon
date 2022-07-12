@@ -9,7 +9,8 @@ from pprint import pprint
 import numpy as np
 from collections import Counter
 
-
+WHITE = 'white'
+RED = 'red'
 
 class GameState:
     """
@@ -26,34 +27,34 @@ class GameState:
         which describe one player's bearoff_zone and the other player's bar
         """
 
-        self.board = [Space(0, 'bearoff_zone', 'r'),
-                      Space(0, 'bar', 'w'),
-                      Space(1, 'outer', 'w', 2),
+        self.board = [Space(0, 'bearoff_zone', RED),
+                      Space(0, 'bar', WHITE),
+                      Space(1, 'outer', WHITE, 2),
                       Space(2, 'outer'),
                       Space(3, 'outer'),
                       Space(4, 'outer'),
                       Space(5, 'outer'),
-                      Space(6, 'outer', 'r', 5),
+                      Space(6, 'outer', RED, 5),
                       Space(7, 'outer'),
-                      Space(8, 'outer', 'r', 3),
+                      Space(8, 'outer', RED, 3),
                       Space(9, 'outer'),
                       Space(10, 'outer'),
                       Space(11, 'outer'),
-                      Space(12, 'outer', 'w', 5),
-                      Space(13, 'outer', 'r', 5),
+                      Space(12, 'outer', WHITE, 5),
+                      Space(13, 'outer', RED, 5),
                       Space(14, 'outer'),
                       Space(15, 'outer'),
                       Space(16, 'outer'),
-                      Space(17, 'outer', 'w', 3),
+                      Space(17, 'outer', WHITE, 3),
                       Space(18, 'outer'),
-                      Space(19, 'outer', 'w', 5),
+                      Space(19, 'outer', WHITE, 5),
                       Space(20, 'outer'),
                       Space(21, 'outer'),
                       Space(22, 'outer'),
                       Space(23, 'outer'),
-                      Space(24, 'outer', 'r', 2),
-                      Space(25, 'bearoff_zone', 'w'),
-                      Space(25, 'bar', 'r')
+                      Space(24, 'outer', RED, 2),
+                      Space(25, 'bearoff_zone', WHITE),
+                      Space(25, 'bar', RED)
                       ]
 
         self.score = (0, 0)
@@ -70,15 +71,15 @@ class GameState:
 
     @property
     def bearoff_zone(self):
-        return {'w': self.board[-2], 'r': self.board[0]}
+        return {WHITE: self.board[-2], RED: self.board[0]}
 
     @property
     def bar(self):
-        return {'w': self.board[1], 'r': self.board[-1]}
+        return {WHITE: self.board[1], RED: self.board[-1]}
 
     @property
     def homeboard(self):
-        return {'w': range(19, 25), 'r': range(1, 7)}
+        return {WHITE: range(19, 25), RED: range(1, 7)}
 
     @property
     def players_spaces(self):
@@ -87,38 +88,38 @@ class GameState:
         '''
 
         white_spaces = [space for space in self.board if space.occupant ==
-                        'w' and space.space_type == 'outer']
-        white_bar_space = self.bar['w']
+                        WHITE and space.space_type == 'outer']
+        white_bar_space = self.bar[WHITE]
         if white_bar_space.number_occupants > 0:
             white_spaces = [white_bar_space] + white_spaces
 
         red_spaces = [space for space in self.board if space.occupant ==
-                      'r' and space.space_type == 'outer']
-        red_bar_space = self.bar['r']
+                      RED and space.space_type == 'outer']
+        red_bar_space = self.bar[RED]
         if red_bar_space.number_occupants > 0:
             red_spaces = [red_bar_space] + red_spaces
 
-        return {'w': white_spaces, 'r': red_spaces}
+        return {WHITE: white_spaces, RED: red_spaces}
 
     @property
     def all_in_homeboard(self):
-        white_spaces = self.players_spaces['w']
-        red_spaces = self.players_spaces['r']
+        white_spaces = self.players_spaces[WHITE]
+        red_spaces = self.players_spaces[RED]
 
         white_all_in_homeboard = all(
-            [space.position_number in self.homeboard['w'] for space in white_spaces])
+            [space.position_number in self.homeboard[WHITE] for space in white_spaces])
         red_all_in_homeboard = all(
-            [space.position_number in self.homeboard['r'] for space in red_spaces])
+            [space.position_number in self.homeboard[RED] for space in red_spaces])
 
-        return {'w': white_all_in_homeboard, 'r': red_all_in_homeboard}
+        return {WHITE: white_all_in_homeboard, RED: red_all_in_homeboard}
 
     @property
     def turn(self):
-        return 'w' if self.is_white_turn else 'r'
+        return WHITE if self.is_white_turn else RED
 
     @property
     def not_turn(self):
-        return 'r' if self.is_white_turn else 'w'
+        return RED if self.is_white_turn else WHITE
 
     @property
     def player_on_bar(self):
@@ -216,9 +217,10 @@ class GameState:
         move_bank += self._find_moves_for_dice_order(die1, die0)
 
 
-        move_bank = self._get_largest_moves(move_bank)
+        if len(move_bank) > 0:
+            move_bank = self._get_largest_moves(move_bank)
 
-        move_bank = self._remove_duplicates(move_bank)
+            move_bank = self._remove_duplicates(move_bank)
 
         move_bank_readable = [[(start_space.position_number, end_space.position_number) for start_space, end_space in move] for move in move_bank]
 
@@ -239,10 +241,12 @@ class GameState:
             [start_position.position_number for start_position in start_positions]))
 
         for space0 in start_positions:
+            print('Finding move for position {} and die{}'.format(space0.position_number, die0))
             move_and_updated_start_positions0 = self.find_move_and_update_start_positions(
                 space0, die0, start_positions)
 
             if move_and_updated_start_positions0:
+                print('Available')
                 move0 = move_and_updated_start_positions0['move']
                 updated_start_positions0 = move_and_updated_start_positions0[
                     'updated_start_positions']
@@ -406,7 +410,7 @@ class GameState:
         """
         Applies the correct function (add/subtract) to a pip
         """
-        if self.turn == 'w':
+        if self.turn == WHITE:
             new_position = space.position_number + die
         else:
             new_position = space.position_number - die
@@ -463,7 +467,7 @@ class Move():
         for i in range(1, 25):
             white_transforms[i] = np.abs(i - 25)
 
-        transformations = {'w': white_transforms, 'r': red_transforms}
+        transformations = {WHITE: white_transforms, RED: red_transforms}
 
         transformed_pip_moves = []
         for pip_move in self.pip_moves:
@@ -475,6 +479,8 @@ class Move():
         # bg_notation = dict(Counter(transformed_pip_moves))
 
         # return bg_notation
+
+
 
 
 class Space:
