@@ -4,6 +4,7 @@
 '''
 
 import copy
+import itertools
 import random
 from pprint import pprint
 import numpy as np
@@ -220,7 +221,7 @@ class GameState:
         if len(move_bank) > 0:
             move_bank = self._get_largest_moves(move_bank)
 
-            move_bank = self._remove_duplicates(move_bank)
+            move_bank = self._remove_duplicates_and_format(move_bank)
 
         move_bank_readable = [[(start_space.position_number, end_space.position_number) for start_space, end_space in move] for move in move_bank]
 
@@ -345,10 +346,23 @@ class GameState:
         print("But it's not an available space")
         return None
 
-    def _remove_duplicates(self, move_bank):
+    def _remove_duplicates_and_format(self, move_bank):
         '''
-        removes duplicate moves from a list of moves
+        removes duplicate moves from a list of moves and reduces moves where one
+        pip is moved to just show start position and end position
         '''
+
+        # for move in move_bank:
+
+        #     i = 0
+        #     while i < len(move) - 1:
+        #         if move[i][1].position_number == move[i+1][0].position_number:
+        #             print('can contract this move: {}'.format(move))
+        #             new_move = (move[i][0], move[i+1][1])
+        #             del move[i: i+2]
+        #             move.insert(i, new_move)
+        #         else:
+        #             i+=1
 
         move_bank_unique = []
         for move in move_bank:
@@ -356,6 +370,26 @@ class GameState:
             if all([move_set != Counter([(start_space.position_number, end_space.position_number) for start_space, end_space in unique_move]) for unique_move in move_bank_unique]):
                 move_bank_unique.append(move)
         return move_bank_unique
+        # print('This is the move bank were trying to sort: {}'.format(move_bank))
+        # for move in move_bank:
+
+        #     i = 0
+        #     while i < len(move) - 1:
+        #         if move[i][1].position_number == move[i+1][0].position_number:
+        #             print('can contract this move: {}'.format(move))
+        #             new_move = (move[i][0], move[i+1][1])
+        #             del move[i: i+2]
+        #             move.insert(i, new_move)
+        #         else:
+        #             i+=1
+
+        # print('Move bank after while loop:{}'.format(move_bank))
+        # # move_bank.sort()
+
+        # move_bank  = list(move_bank for move_bank,_ in itertools.groupby(move_bank))
+
+        # return move_bank
+
 
 
     def _get_largest_moves(self, all_moves):
@@ -383,6 +417,7 @@ class GameState:
             return False
         else:
             return True
+
 
     def _add_die_to_space(self, space, die):
         """
@@ -435,6 +470,9 @@ class Move():
         gives the start space and the second element gives the end space
         of a pip.
         '''
+
+        # Need to add a hit attribute for each tuple.
+        # [{move: (24, 21), is_hit: True}, {move: (13, 8), is_hit: False}]
         self.id = 'generate_unique_id'
         self.player = player
         self.pip_moves = pip_moves
@@ -494,6 +532,16 @@ class Space:
         self.space_type = space_type
         self.occupant = occupant
         self.number_occupants = number_occupants
+
+    @property
+    def _is_vulenerable_space(self):
+        """
+        Determines if a given space is an opponents vulnerable space
+        """
+
+        if space.number_occupants == 1:
+            return True
+        return False
 
     def remove_piece(self):
         '''

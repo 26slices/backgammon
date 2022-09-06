@@ -27,14 +27,14 @@ class TestEngine(unittest.TestCase):
         setattr(r, 'dice', [5, 4])
 
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation: {}'.format(moves))
+        print('****************** Moves in bg notation for TEST_LARGESE_MOVE: {}'.format(moves))
         # # self.assertEqual(moves, [[(21, 16)]])
 
         setattr(r, 'board', TEST_TWO_ON_BAR)
         setattr(r, 'is_white_turn', False)
         setattr(r, 'dice', [5, 4])
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation: {}'.format(moves))
+        print('****************** Moves in bg notation for TEST_TWO_ON_BAR: {}'.format(moves))
         self.assertEqual(moves, [[('bar', 21)]])
 
 
@@ -42,26 +42,26 @@ class TestEngine(unittest.TestCase):
         setattr(r, 'is_white_turn', False)
         setattr(r, 'dice', [5, 4])
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation: {}'.format(moves))
+        print('****************** Moves in bg notation for TEST_ONE_ON_BAR: {}'.format(moves))
         # # self.assertEqual(moves, [[('bar', 21), (6, 1)], [('bar', 21), (21, 16)]])
 
 
         setattr(r, 'board', STARTING_BOARD)
         setattr(r, 'dice', [5, 3])
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation: {}'.format(moves))
+        print('****************** Moves in bg notation for STARTING_BOARD: {}'.format(moves))
 
         setattr(r, 'board', TEST_NO_LEGAL_MOVES_BAR)
         setattr(r, 'is_white_turn', True)
         setattr(r, 'dice', [5, 6])
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation: {}'.format(moves))
+        print('****************** Moves in bg notation for TEST_NO_LEGAL_MOVES_BAR: {}'.format(moves))
 
         setattr(r, 'board', TEST_NO_LEGAL_MOVES_BLOCKED)
         setattr(r, 'is_white_turn', True)
         setattr(r, 'dice', [1, 1])
         moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation: {}'.format(moves))
+        print('****************** Moves in bg notation for TEST_NO_LEGAL_MOVES_BLOCKED: {}'.format(moves))
 
 
 
