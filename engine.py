@@ -4,7 +4,6 @@
 '''
 
 import copy
-import itertools
 import random
 from pprint import pprint
 import numpy as np
@@ -86,11 +85,11 @@ class GameState:
     @property
     def players_spaces(self):
         '''
-        all spaces for each player. Note that bar space is first
+        all spaces for each player.  **Note that bar space is first**
         '''
 
-        white_spaces = [space for space in self.board if space.occupant ==
-                        WHITE and space.space_type == 'outer']
+        white_spaces = [space for space in self.board if space.occupant == WHITE
+                        and space.space_type == 'outer']
         white_bar_space = self.bar[WHITE]
         if white_bar_space.number_occupants > 0:
             white_spaces = [white_bar_space] + white_spaces
@@ -103,17 +102,13 @@ class GameState:
 
         return {WHITE: white_spaces, RED: red_spaces}
 
-    @property
-    def all_in_homeboard(self):
-        white_spaces = self.players_spaces[WHITE]
-        red_spaces = self.players_spaces[RED]
+    def all_in_homeboard(self, all_spaces):
 
-        white_all_in_homeboard = all(
-            [space.position_number in self.homeboard[WHITE] for space in white_spaces])
-        red_all_in_homeboard = all(
-            [space.position_number in self.homeboard[RED] for space in red_spaces])
+        all_in_homeboard = all(
+            [space.position_number in self.homeboard[self.turn] or space.position_number ==
+             self.bearoff_zone[self.turn].position_number for space in all_spaces])
 
-        return {WHITE: white_all_in_homeboard, RED: red_all_in_homeboard}
+        return all_in_homeboard
 
     @property
     def turn(self):
@@ -126,15 +121,6 @@ class GameState:
     @property
     def player_on_bar(self):
         return self.bar[self.turn].number_occupants > 0
-
-    @property
-    def dice_to_use(self):
-        """
-        Doubles self.dice if the player has rolled doubles
-        """
-        if self.dice[0] != self.dice[1]:
-            return [die for die in self.dice]
-        return [die[0] * 4]
 
     @property
     def board_size(self):
@@ -209,14 +195,15 @@ class GameState:
 
     def get_all_moves(self):
         '''
-        Gets all legal moves for the case that there are no doubles
+        Gets all legal moves
         '''
         move_bank = []
         die0 = self.dice[0]
         die1 = self.dice[1]
 
         move_bank += self._find_moves_for_dice_order(die0, die1)
-        move_bank += self._find_moves_for_dice_order(die1, die0)
+        if die0 != die1:
+            move_bank += self._find_moves_for_dice_order(die1, die0)
 
         if len(move_bank) > 0:
             move_bank = self._get_largest_moves(move_bank)
@@ -242,7 +229,7 @@ class GameState:
             [start_position.position_number for start_position in start_positions]))
 
         for space0 in start_positions:
-            print('Finding move for position {} and die{}'.format(
+            print('Finding move for position {} and die {}'.format(
                 space0.position_number, die0))
             move_and_updated_start_positions0 = self.find_move_and_update_start_positions(
                 space0, die0, start_positions)
@@ -285,8 +272,6 @@ class GameState:
                                             space3, die, updated_start_positions2)
                                         if move_and_updated_start_positions3:
                                             move3 = move_and_updated_start_positions3['move']
-                                            updated_start_positions3 = move_and_updated_start_positions3[
-                                                'updated_start_positions']
                                             move_bank.append(
                                                 [move0, move1, move2, move3])
 
@@ -315,8 +300,8 @@ class GameState:
     def find_move_and_update_start_positions(self, space0, die, start_positions):
 
         end_space = [space for space in self.board if
-                     space.position_number == self._add_die_to_space(
-                         space0, die)
+                     space.position_number == self._add_die_to_space(start_positions,
+                                                                     space0, die)
                      and space.space_type != 'bar']
         if not end_space:
             print('Adding die {} to space {} goes out of range!'.format(die, space0))
@@ -325,7 +310,7 @@ class GameState:
         end_space = end_space[0]
         print('end space for space {} and die {}: {}'.format(space0.position_number,
                                                              die, end_space.position_number))
-        if self._is_available_space(end_space):
+        if self._is_available_space(start_positions, end_space):
             print("And it's an available space")
             move = (space0, end_space)
 
@@ -340,7 +325,7 @@ class GameState:
             space0 = copy.copy(space0)
             space0.remove_piece()
             # if there are still pips on that space we want to consider it
-            # use insert so we can put it at the start and can consider pips on the bar
+            # use insert so we can put it at the start so that we can still consider pips on the bar
             if space0.number_occupants >= 1:
                 updated_start_positions.insert(0, space0)
 
@@ -354,18 +339,6 @@ class GameState:
         pip is moved to just show start position and end position
         '''
 
-        # for move in move_bank:
-
-        #     i = 0
-        #     while i < len(move) - 1:
-        #         if move[i][1].position_number == move[i+1][0].position_number:
-        #             print('can contract this move: {}'.format(move))
-        #             new_move = (move[i][0], move[i+1][1])
-        #             del move[i: i+2]
-        #             move.insert(i, new_move)
-        #         else:
-        #             i+=1
-
         move_bank_unique = []
         for move in move_bank:
             move_set = Counter([(start_space.position_number, end_space.position_number)
@@ -373,25 +346,6 @@ class GameState:
             if all([move_set != Counter([(start_space.position_number, end_space.position_number) for start_space, end_space in unique_move]) for unique_move in move_bank_unique]):
                 move_bank_unique.append(move)
         return move_bank_unique
-        # print('This is the move bank were trying to sort: {}'.format(move_bank))
-        # for move in move_bank:
-
-        #     i = 0
-        #     while i < len(move) - 1:
-        #         if move[i][1].position_number == move[i+1][0].position_number:
-        #             print('can contract this move: {}'.format(move))
-        #             new_move = (move[i][0], move[i+1][1])
-        #             del move[i: i+2]
-        #             move.insert(i, new_move)
-        #         else:
-        #             i+=1
-
-        # print('Move bank after while loop:{}'.format(move_bank))
-        # # move_bank.sort()
-
-        # move_bank  = list(move_bank for move_bank,_ in itertools.groupby(move_bank))
-
-        # return move_bank
 
     def _get_largest_moves(self, all_moves):
         """
@@ -406,39 +360,42 @@ class GameState:
 
         return moves
 
-    def _is_available_space(self, space):
+    def _is_available_space(self, all_spaces, space):
         """
         Determines if a given space is available for the player whose turn it is
         """
+
+        all_in_homeboard = self.all_in_homeboard(all_spaces)
 
         if (space.position_number not in range(26) or
             space.space_type == 'bar' or
             (space.position_number == self.bearoff_zone[self.not_turn].position_number
                 and space.space_type == 'bearoff_zone') or
             (space.number_occupants > 1 and space.occupant == self.not_turn) or
-                (self.all_in_homeboard[self.turn] is False and space.space_type == 'bearoff_zone')):
+                (all_in_homeboard is False and space.space_type == 'bearoff_zone')):
             return False
         else:
             return True
 
-    def _add_die_to_space(self, space, die):
+    def _add_die_to_space(self, all_spaces, space, die):
         """
         Adds die to a space, accounting for when the space is the furthest from
         bearoff and all spaces are in bearoff zone
         """
 
-        if not self.all_in_homeboard[self.turn]:
+        all_in_homeboard = self.all_in_homeboard(all_spaces)
+
+        if not all_in_homeboard:
             return self.apply_correct_fn_die_to_space(space, die)
 
         else:
-            players_spaces = self.players_spaces[self.turn]
             player_bearoff_zone = self.bearoff_zone[self.turn]
 
-            distance_from_bar = abs(
+            distance_from_bearoff = abs(
                 space.position_number - player_bearoff_zone.position_number)
-            max_distance_from_bar = max(
-                [abs(player_space.position_number - player_bearoff_zone.position_number) for player_space in players_spaces])
-            if distance_from_bar == max_distance_from_bar and self.apply_correct_fn_die_to_space(space, die) not in range(26):
+            max_distance_from_bearoff = max(
+                [abs(player_space.position_number - player_bearoff_zone.position_number) for player_space in all_spaces])
+            if distance_from_bearoff == max_distance_from_bearoff and self.apply_correct_fn_die_to_space(space, die) not in range(26):
                 return player_bearoff_zone.position_number
             else:
                 return self.apply_correct_fn_die_to_space(space, die)
@@ -535,11 +492,11 @@ class Space:
 
     @property
     def _is_vulenerable_space(self):
-        """
+        '''
         Determines if a given space is an opponents vulnerable space
-        """
+        '''
 
-        if space.number_occupants == 1:
+        if self.number_occupants == 1:
             return True
         return False
 

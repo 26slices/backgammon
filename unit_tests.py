@@ -1,12 +1,11 @@
 import unittest
 from engine import GameState, Decision, Move
-from constants import (ALL_ROLLS, TEST_ONE_ON_BAR, TEST_TWO_ON_BAR,
-                      TEST_LARGESE_MOVE, STARTING_BOARD, TEST_NO_LEGAL_MOVES_BAR,
-                      TEST_NO_LEGAL_MOVES_BLOCKED)
+from constants import *
 
-        # NEED [(13, 8), (8, 5)] and [(13, 10), (10, 5)] to be the same when neither involve a hit. Can ignore for now.
-        # SWAP 'w' AND 'r' for white and red
-        # Get tests written out and working
+# NEED [(13, 8), (8, 5)] and [(13, 10), (10, 5)] to be the same when neither involve a hit. Can ignore for now.
+# SWAP 'w' AND 'r' for white and red
+# Get tests written out and working
+
 
 class TestEngine(unittest.TestCase):
     w = GameState()
@@ -18,59 +17,107 @@ class TestEngine(unittest.TestCase):
 
         print('is whites turn: {}'.format(self.w.is_white_turn))
 
-
     def test_moves(self):
 
         r = GameState()
         setattr(r, 'is_white_turn', False)
-        setattr(r, 'board', TEST_LARGESE_MOVE)
-        setattr(r, 'dice', [5, 4])
 
-        moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation for TEST_LARGESE_MOVE: {}'.format(moves))
-        # # self.assertEqual(moves, [[(21, 16)]])
-
-        setattr(r, 'board', TEST_TWO_ON_BAR)
-        setattr(r, 'is_white_turn', False)
-        setattr(r, 'dice', [5, 4])
-        moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation for TEST_TWO_ON_BAR: {}'.format(moves))
-        self.assertEqual(moves, [[('bar', 21)]])
-
-
-        setattr(r, 'board', TEST_ONE_ON_BAR)
-        setattr(r, 'is_white_turn', False)
-        setattr(r, 'dice', [5, 4])
-        moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation for TEST_ONE_ON_BAR: {}'.format(moves))
-        # # self.assertEqual(moves, [[('bar', 21), (6, 1)], [('bar', 21), (21, 16)]])
-
-
+        # ideally [(13, 8), (8, 5)] and  [(13, 10), (10, 5)] would both read: [(13, 5)], but for now it's a nice to have
         setattr(r, 'board', STARTING_BOARD)
         setattr(r, 'dice', [5, 3])
-        moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
-        print('****************** Moves in bg notation for STARTING_BOARD: {}'.format(moves))
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
+        print(
+            '****************** Moves in bg notation for STARTING_BOARD: {}'.format(moves))
 
+        # here red can only move the pip on the 21 space. because the 12 space is blocked red must play the larger of the two dice, 5: 21 - 16
+        setattr(r, 'board', TEST_LARGESE_MOVE)
+        setattr(r, 'dice', TEST_LARGESE_MOVE_DICE_5_4)
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
+        print('****************** Moves in bg notation for TEST_LARGESE_MOVE: {}'.format(moves))
+        self.assertEqual(moves, [[(21, 16)]])
+
+        # here red has one pip on the bar which he has to move with the 4. He then has 2 options to play the 5, 21-16 and 6-1.
+        setattr(r, 'board', TEST_ONE_ON_BAR)
+        setattr(r, 'is_white_turn', False)
+        setattr(r, 'dice', TEST_ONE_ON_BAR_DICE_5_4)
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
+        print(
+            '****************** Moves in bg notation for TEST_ONE_ON_BAR: {}'.format(moves))
+        self.assertEqual(
+            moves, [[('bar', 21), (6, 1)], [('bar', 21), (21, 16)]])
+
+        # here red has 2 pips on the bar and can only bring one in. therefore his only legal move is the move whihc brings that one in: bar-21
+        setattr(r, 'board', TEST_TWO_ON_BAR)
+        setattr(r, 'is_white_turn', False)
+        setattr(r, 'dice', TEST_TWO_ON_BAR_DICE_5_4)
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
+        print(
+            '****************** Moves in bg notation for TEST_TWO_ON_BAR: {}'.format(moves))
+        self.assertEqual(moves, [[('bar', 21)]])
+
+        # here red has all his pips in the bearoff zone including pips on the 2,3 and 4.
+        setattr(r, 'board', TEST_BEAROFF_1)
+        setattr(r, 'dice', TEST_BEAROFF_1_DICE_3_2)
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
+        print(
+            '****************** Moves in bg notation for TEST_BEAROFF_1: {}'.format(moves))
+        self.assertEqual(
+            moves, [[(3, 'bearoff_zone'), (3, 1)], [
+                (3, 'bearoff_zone'), (2, 'bearoff_zone')],
+                [(3, 'bearoff_zone'), (4, 2)], [(4, 1), (2, 'bearoff_zone')], [(4, 1), (3, 1)]])
+
+        # here red has all his pips in the bearoff zone spaces 1 and 2. He can use the 3 and 5 to bearoff pips in the 2.
+        setattr(r, 'board', TEST_BEAROFF_2)
+        setattr(r, 'dice', TEST_BEAROFF_2_DICE_3_5)
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
+        print(
+            '****************** Moves in bg notation for TEST_BEAROFF_1: {}'.format(moves))
+        self.assertEqual(
+            moves, [[(2, 'bearoff_zone'), (2, 'bearoff_zone')]])
+
+        # here red has all his pips in the bearoff zone spaces 1 and 2. He can use the 5 and 5 to bearoff pips 4 in the 2.
+        setattr(r, 'board', TEST_DOUBLES_BEAROFF)
+        setattr(r, 'dice', TEST_DOUBLES_BEAROFF_DICE_5_5)
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
+        print(
+            '****************** Moves in bg notation for TEST_DOUBLES_BEAROFF: {}'.format(moves))
+        self.assertEqual(
+            moves, [[(2, 'bearoff_zone'), (2, 'bearoff_zone'), (2, 'bearoff_zone'), (2, 'bearoff_zone')]])
+
+        setattr(r, 'board', TEST_DOUBLES_BEAROFF_STARTING_OUTSIDE_HOMEBOARD)
+        setattr(r, 'dice', [6, 6])
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
+        print('****************** Moves in bg notation for TEST_DOUBLES_BEAROFF_STARTING_OUTSIDE_HOMEBOARD: {}'.format(moves))
+        self.assertEqual(
+            moves, [[(20, 14), (14, 8), (8, 2), (3, 'bearoff_zone')]])
+
+        # white is on the bar and rolls a 5,6 , but red is blocking those spaces.
         setattr(r, 'board', TEST_NO_LEGAL_MOVES_BAR)
         setattr(r, 'is_white_turn', True)
-        setattr(r, 'dice', [5, 6])
-        moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
+        setattr(r, 'dice', TEST_NO_LEGAL_MOVES_BAR_DICE_5_6)
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
         print('****************** Moves in bg notation for TEST_NO_LEGAL_MOVES_BAR: {}'.format(moves))
+        self.assertEqual(
+            moves, [])
 
+# all white's pips are on the 1 space and all reds are on the 2 space. white rolls 1,1 and so is blocked.
         setattr(r, 'board', TEST_NO_LEGAL_MOVES_BLOCKED)
         setattr(r, 'is_white_turn', True)
-        setattr(r, 'dice', [1, 1])
-        moves = [move.move_to_backgammon_notation() for move in r.get_all_moves()]
+        setattr(r, 'dice', TEST_NO_LEGAL_MOVES_BLOCKED_DICE_1_1)
+        moves = [move.move_to_backgammon_notation()
+                 for move in r.get_all_moves()]
         print('****************** Moves in bg notation for TEST_NO_LEGAL_MOVES_BLOCKED: {}'.format(moves))
-
-
-
-
-    # def test_make_move(self):
-    #     self.w.make_move(self.w_move)
-    #     self.assertEqual(self.w.board[1], ['-', 0])
-    #     self.assertEqual(self.w.board[2], ['w', 2])
-
+        self.assertEqual(
+            moves, [])
 
 
 if __name__ == '__main__':
