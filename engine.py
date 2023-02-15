@@ -10,7 +10,7 @@ import numpy as np
 from collections import Counter
 
 WHITE = 'white'
-RED = 'red'
+RED = 'black'
 
 
 class GameState:
@@ -518,3 +518,21 @@ class Space:
         self.occupant = turn_owner
 
         return self
+
+
+# WIP: we'll put here for now how the game plays out
+def play_single_game():
+    '''
+    This will be where the engine makes moves and plays out a single game until a game is over.
+    Need:
+        1. determine whose go it is
+        2. roll the dice
+        3. Find all moves
+        4. Pick a random move -- this is the part that we'll change to let the computer learn
+        5. Make the move
+        6. update the gamestate
+        7. handover
+    '''
+    game = engine.Game(first_to=1)
+
+    pass

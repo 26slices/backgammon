@@ -3,8 +3,6 @@ from engine import GameState, Decision, Move
 from constants import *
 
 # NEED [(13, 8), (8, 5)] and [(13, 10), (10, 5)] to be the same when neither involve a hit. Can ignore for now.
-# SWAP 'w' AND 'r' for white and red
-# Get tests written out and working
 
 
 class TestEngine(unittest.TestCase):
