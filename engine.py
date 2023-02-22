@@ -4,7 +4,9 @@
 '''
 
 import copy
+import pandas as pd
 import random
+import sys
 from pprint import pprint
 import numpy as np
 from collections import Counter
@@ -19,7 +21,7 @@ class GameState:
     determine all legal moves and provide a game log.
     """
 
-    def __init__(self, first_to=7):
+    def __init__(self, match_to=7):
         """
         self.board describes how many and whose pieces are on a given point on
         the board. The first item in each tuple represents the player whose
@@ -28,61 +30,83 @@ class GameState:
         which describe one player's bearoff_zone and the other player's bar
         """
 
-        self.board = [Space(0, 'bearoff_zone', RED),
-                      Space(0, 'bar', WHITE),
-                      Space(1, 'outer', WHITE, 2),
-                      Space(2, 'outer'),
-                      Space(3, 'outer'),
-                      Space(4, 'outer'),
-                      Space(5, 'outer'),
-                      Space(6, 'outer', RED, 5),
-                      Space(7, 'outer'),
-                      Space(8, 'outer', RED, 3),
-                      Space(9, 'outer'),
-                      Space(10, 'outer'),
-                      Space(11, 'outer'),
-                      Space(12, 'outer', WHITE, 5),
-                      Space(13, 'outer', RED, 5),
-                      Space(14, 'outer'),
-                      Space(15, 'outer'),
-                      Space(16, 'outer'),
-                      Space(17, 'outer', WHITE, 3),
-                      Space(18, 'outer'),
-                      Space(19, 'outer', WHITE, 5),
-                      Space(20, 'outer'),
-                      Space(21, 'outer'),
-                      Space(22, 'outer'),
-                      Space(23, 'outer'),
-                      Space(24, 'outer', RED, 2),
-                      Space(25, 'bearoff_zone', WHITE),
-                      Space(25, 'bar', RED)
-                      ]
-
-        self.score = (0, 0)
-        self.first_to = first_to
+        starting_board = [Space(0, 'bearoff_zone', RED),
+                          Space(0, 'bar', WHITE),
+                          Space(1, 'outer', WHITE, 2),
+                          Space(2, 'outer'),
+                          Space(3, 'outer'),
+                          Space(4, 'outer'),
+                          Space(5, 'outer'),
+                          Space(6, 'outer', RED, 5),
+                          Space(7, 'outer'),
+                          Space(8, 'outer', RED, 3),
+                          Space(9, 'outer'),
+                          Space(10, 'outer'),
+                          Space(11, 'outer'),
+                          Space(12, 'outer', WHITE, 5),
+                          Space(13, 'outer', RED, 5),
+                          Space(14, 'outer'),
+                          Space(15, 'outer'),
+                          Space(16, 'outer'),
+                          Space(17, 'outer', WHITE, 3),
+                          Space(18, 'outer'),
+                          Space(19, 'outer', WHITE, 5),
+                          Space(20, 'outer'),
+                          Space(21, 'outer'),
+                          Space(22, 'outer'),
+                          Space(23, 'outer'),
+                          Space(24, 'outer', RED, 2),
+                          Space(25, 'bearoff_zone', WHITE),
+                          Space(25, 'bar', RED)
+                          ]
+        self.board = starting_board
+        self.score = {WHITE: 0, RED: 0}
+        self.match_to = match_to
         self.crawford = False
         self.post_crawford = False
         self.cube = 1
         self.cube_owner = None
         self.dice = random.sample(range(1, 7), 2)
+
         self.is_white_turn = self.dice[0] > self.dice[1]
         self.cube_decision = False
         self.turn_number = 0
         self.move_log = []
 
     @property
+    def print_board(self):
+        board = {'position': [space.position_number for space in self.board],
+                 'type': [space.space_type for space in self.board],
+                 'occupant': [space.occupant for space in self.board],
+                 'number_occupants': [space.number_occupants for space in self.board]
+                 }
+        board = pd.DataFrame(data=board)
+
+        if not board['number_occupants'].between(0, 15).all():
+            print(
+                '************************ Outside range BUG!!! ************************')
+            sys.exit()
+        elif board[(board['occupant'].isna()) & (board['number_occupants'] > 0)].shape[0] > 0:
+            sys.exit()
+        elif board[(board['type'] == 'outer') & (board['occupant'].notnull()) & (board['number_occupants'] == 0)].shape[0] > 0:
+            print(
+                '************************ Claimed but unoccupied BUG!!! ************************')
+            sys.exit()
+        return board.to_string(index=False)
+
+    @ property
     def bearoff_zone(self):
         return {WHITE: self.board[-2], RED: self.board[0]}
 
-    @property
+    @ property
     def bar(self):
         return {WHITE: self.board[1], RED: self.board[-1]}
 
-    @property
+    @ property
     def homeboard(self):
         return {WHITE: range(19, 25), RED: range(1, 7)}
 
-    @property
+    @ property
     def players_spaces(self):
         '''
         all spaces for each player.  **Note that bar space is first**
@@ -103,45 +127,79 @@ class GameState:
         return {WHITE: white_spaces, RED: red_spaces}
 
     def all_in_homeboard(self, all_spaces):
-
+        '''
+        returns true if every space from all_spaces is in the homeboard for the
+        player whose turn it is
+        '''
         all_in_homeboard = all(
-            [space.position_number in self.homeboard[self.turn] or space.position_number ==
-             self.bearoff_zone[self.turn].position_number for space in all_spaces])
+            [space.position_number in self.homeboard[self.turn] or
+             space.position_number == self.bearoff_zone[self.turn].position_number
+             for space in all_spaces])
 
         return all_in_homeboard
 
-    @property
+    @ property
+    def number_beared_off(self):
+        return {WHITE: self.bearoff_zone[WHITE].number_occupants,
+                RED: self.bearoff_zone[RED].number_occupants}
+
+    @ property
+    def game_over(self):
+        return self.number_beared_off[WHITE] == 15 or self.number_beared_off[RED] == 15
+
+    def update_score(self):
+        winner = [player for player,
+                  score in self.number_beared_off.items() if score == 15][0]
+        loser = [player for player,
+                 score in self.number_beared_off.items() if score != 15][0]
+
+        loser_spaces = self.players_spaces[loser]
+        if self.any_in_opponents_homeboard(loser_spaces):
+            win_type = 3  # backgammon =D
+        elif self.number_beared_off[loser] == 0:
+            win_type = 2  # gammon
+        else:
+            win_type = 1
+        self.score[winner] += self.cube * win_type
+
+        return self.score
+
+    def match_over(self):
+        return self.score[WHITE] >= self.match_to or self.score[RED] >= self.match_to
+
+    @ property
+    def any_in_opponents_homeboard(self, all_spaces):
+
+        any_in_opponents_homeboard = any(
+            [space.position_number in self.homeboard[self.not_turn] or space.position_number ==
+             self.bar[self.turn].position_number for space in all_spaces])
+
+        return any_in_opponents_homeboard
+
+    @ property
     def turn(self):
         return WHITE if self.is_white_turn else RED
 
-    @property
+    @ property
     def not_turn(self):
         return RED if self.is_white_turn else WHITE
 
-    @property
+    @ property
     def player_on_bar(self):
         return self.bar[self.turn].number_occupants > 0
 
-    @property
+    @ property
     def board_size(self):
         return len(self.board)
 
     def show_state(self):
         pprint(self.__dict__)
 
-    def get_initial_roll(self):
-        """
-        Gets the first roll and sets the player whose turn it is to begin the
-        game.
-        """
-        self.dice = random.sample(range(1, 7), 2)
-        self.is_white_turn = self.dice[0] > self.dice[1]
-
-    def generate_dice_value(self):
+    def get_dice_value(self):
         """
         generates the dice value for a go
         """
-        self.dice = (random.randint(1, 6), random.randint(1, 6))
+        return (random.randint(1, 6), random.randint(1, 6))
 
     def make_decision(self, decision):
         """
@@ -156,35 +214,32 @@ class GameState:
         takes an instance of Move class and updates the board to reflect the move.
         It also inputs the move into the move log and updates whose turn it is.
         """
-        if self.turn != move.player:
-            raise Exception("It's {}'s turn!".format(self.turn))
+        if move is not None:
+            # print('Move chosen: {}'.format(move.space_moves))
 
-        if self.is_white_turn:
-            self.turn_number += 1
+            if self.turn != move.player:
+                raise Exception("It's {}'s turn!".format(self.turn))
 
-        # update the positions of where the pips are moving from
-        for space in self.players_spaces[self.turn]:
-            for start_position in move.start_positions:
-                if space.position_number == start_position:
-                    space.remove_piece()
+            if self.is_white_turn:
+                self.turn_number += 1
 
-        # update the positions of where the pips are moving to
-        for end_position in move.end_positions:
             for space in self.board:
-                if space.position_number == end_position:
-                    # remove a piece and add it to the bar
-                    # this assumes that the move is a legal move
-                    if space.occupant == self.not_turn:
+                for start_position, end_position in move.space_moves:
+                    # update the positions of where the pips are moving from
+                    if space.position_number == start_position and space.space_type in ['outer', 'bar']:
                         space.remove_piece()
-                        self.board[self.bar[self.not_turn]
-                                   ].number_occupants += 1
 
-                    space.add_piece(turn_owner=self.turn)
+                    # update the positions of where the pip is moving to
+                    if space.position_number == end_position and space.space_type in ['outer', 'bearoff_zone']:
+                        # remove a piece and add it to the bar
+                        if space.occupant == self.not_turn:
+                            space.remove_piece()
+                            self.bar[self.not_turn].number_occupants += 1
 
-        # update the move log
+                        space.add_piece(turn_owner=self.turn)
+        else:
+            print('No legal moves!!')
         self.move_log.append(str(move))
-
-        # update whose turn it is
         self._update_turn_owner()
 
     def _update_turn_owner(self):
@@ -210,11 +265,6 @@ class GameState:
 
             move_bank = self._remove_duplicates_and_format(move_bank)
 
-        move_bank_readable = [[(start_space.position_number, end_space.position_number)
-                               for start_space, end_space in move] for move in move_bank]
-
-        print('ALL MOVES: {}'.format(move_bank_readable))
-
         # convert moves to Move class
         move_bank = [Move(self.turn, move) for move in move_bank]
         return move_bank
@@ -225,24 +275,26 @@ class GameState:
         start_positions = self.players_spaces[self.turn]
         move_bank = []
 
-        print('Start positions: {}'.format(
-            [start_position.position_number for start_position in start_positions]))
-
+        # print('Start positions: {}'.format(
+        #     [start_position.position_number for start_position in start_positions]))
+        # print('Here are the start positions: {}'.format(
+        #     [space.print_space for space in start_positions]))
         for space0 in start_positions:
-            print('Finding move for position {} and die {}'.format(
-                space0.position_number, die0))
+            # print('Finding move for position {} and die {}'.format(
+                # space0.position_number, die0))
             move_and_updated_start_positions0 = self.find_move_and_update_start_positions(
                 space0, die0, start_positions)
 
             if move_and_updated_start_positions0:
-                print('Available')
+                # print('Available')
                 move0 = move_and_updated_start_positions0['move']
                 updated_start_positions0 = move_and_updated_start_positions0[
                     'updated_start_positions']
                 move_bank.append([move0])
-                print('Adding move {}'.format(
-                    [space.position_number for space in move0]))
-
+                # print('Adding move {}'.format(
+                #     [space.position_number for space in move0]))
+                # print('Here are the next start positions: {}'.format(
+                #     [space.print_space for space in updated_start_positions0]))
                 # loop through all spaces in updated start_positions
                 for space1 in updated_start_positions0:
                     move_and_updated_start_positions1 = self.find_move_and_update_start_positions(
@@ -253,11 +305,15 @@ class GameState:
                         updated_start_positions1 = move_and_updated_start_positions1[
                             'updated_start_positions']
                         move_bank.append([move0, move1])
+                        # print('Adding move {}'.format(
+                        #     [space.position_number for space in move1]))
 
                         # if roll is a double we need to go two steps deeper to find four moves
                         if is_double:
-                            print("***** IT'S A DOUBLE! ******")
+                            # print("***** IT'S A DOUBLE! ******")
                             die = die1
+                            # print('Here are the third start positions: {}'.format(
+                            #     [space.print_space for space in updated_start_positions1]))
                             for space2 in updated_start_positions1:
                                 move_and_updated_start_positions2 = self.find_move_and_update_start_positions(
                                     space2, die, updated_start_positions1)
@@ -266,7 +322,10 @@ class GameState:
                                     updated_start_positions2 = move_and_updated_start_positions2[
                                         'updated_start_positions']
                                     move_bank.append([move0, move1, move2])
-
+                                    # print('Adding move {}'.format(
+                                    #     [space.position_number for space in move2]))
+                                    # print('Here are the fourth start positions: {}'.format(
+                                    #     [space.print_space for space in updated_start_positions2]))
                                     for space3 in updated_start_positions2:
                                         move_and_updated_start_positions3 = self.find_move_and_update_start_positions(
                                             space3, die, updated_start_positions2)
@@ -274,6 +333,8 @@ class GameState:
                                             move3 = move_and_updated_start_positions3['move']
                                             move_bank.append(
                                                 [move0, move1, move2, move3])
+                                            # print('Adding move {}'.format(
+                                            #     [space.position_number for space in move3]))
 
                                         # if player is on the bar then that checker has to be moved, so no need to loop through other spaces
                                         if space3.space_type == 'bar':
@@ -292,7 +353,7 @@ class GameState:
             # if you're on the bar then you have to move checker off the bar so
             # no need to look through other points
             if space0.space_type == 'bar':
-                print('That was a bar space, will try break')
+                # print('That was a bar space, will try break')
                 break
 
         return move_bank
@@ -304,22 +365,35 @@ class GameState:
                                                                      space0, die)
                      and space.space_type != 'bar']
         if not end_space:
-            print('Adding die {} to space {} goes out of range!'.format(die, space0))
+            # print('Adding die {} to space {} goes out of range!'.format(die, space0))
             return None
 
         end_space = end_space[0]
-        print('end space for space {} and die {}: {}'.format(space0.position_number,
-                                                             die, end_space.position_number))
+        # print('end space for space {} and die {}: {}'.format(space0.position_number,
+        #                                                      die, end_space.position_number))
         if self._is_available_space(start_positions, end_space):
-            print("And it's an available space")
+            # print("And it's an available space")
             move = (space0, end_space)
 
             # update the list of positions to look at
             # have to be careful not to update any of the actual spaces
             updated_start_positions = copy.copy(start_positions)
-            end_space = copy.copy(end_space)
-            end_space.add_piece(turn_owner=self.turn)
-            updated_start_positions.append(end_space)
+            same_as_end_space = [
+                space for space in updated_start_positions if space.position_number == end_space.position_number]
+            if same_as_end_space:
+                same_as_end_space = same_as_end_space[0]
+                updated_start_positions.remove(
+                    same_as_end_space)
+                end_space = copy.copy(same_as_end_space)
+                end_space.add_piece(turn_owner=self.turn)
+            else:
+                end_space = copy.copy(end_space)
+                end_space.add_piece(turn_owner=self.turn)
+                if end_space.space_type == 'outer':
+                    setattr(end_space, 'number_occupants', 1)
+            # if it's an outer space let's add it back into the list of spaces to consider, and make sure that there's only one pip there
+            if end_space.space_type == 'outer':
+                updated_start_positions.append(end_space)
 
             updated_start_positions.remove(space0)
             space0 = copy.copy(space0)
@@ -330,7 +404,7 @@ class GameState:
                 updated_start_positions.insert(0, space0)
 
             return {'move': move, 'updated_start_positions': updated_start_positions}
-        print("But it's not an available space")
+        # print("But it's not an available space")
         return None
 
     def _remove_duplicates_and_format(self, move_bank):
@@ -343,7 +417,9 @@ class GameState:
         for move in move_bank:
             move_set = Counter([(start_space.position_number, end_space.position_number)
                                 for start_space, end_space in move])
-            if all([move_set != Counter([(start_space.position_number, end_space.position_number) for start_space, end_space in unique_move]) for unique_move in move_bank_unique]):
+            if all([move_set != Counter([(start_space.position_number, end_space.position_number)
+                                         for start_space, end_space in unique_move])
+                    for unique_move in move_bank_unique]):
                 move_bank_unique.append(move)
         return move_bank_unique
 
@@ -352,7 +428,7 @@ class GameState:
         A player's move must be the max length possible, regardless of how many
         dice are used
         """
-        # CAVEAT TO THIS WHEN YOU'RE BEARING OFF. THINK WE CAN OVERCOME THIS BY SAYING THAT THAT IF YOU BEAR OFF WITH A 6 FFOM THE 5 POINT IT HAS LENGTH 6
+
         max_move_length = max([sum([abs(start_pos.position_number - end_pos.position_number)
                                     for start_pos, end_pos in move]) for move in all_moves])
         moves = [move for move in all_moves if sum(
@@ -435,12 +511,14 @@ class Move():
         self.id = 'generate_unique_id'
         self.player = player
         self.pip_moves = pip_moves
+        self.space_moves = [
+            [pip_move[0].position_number, pip_move[1].position_number] for pip_move in pip_moves]
         self.start_positions = [
             pip_move[0].position_number for pip_move in pip_moves]
         self.end_positions = [
             pip_move[1].position_number for pip_move in pip_moves]
 
-    @property
+    @ property
     def move_length(self):
         '''
         Length of a move
@@ -490,7 +568,14 @@ class Space:
         self.occupant = occupant
         self.number_occupants = number_occupants
 
-    @property
+    @ property
+    def print_space(self):
+        space = {'position': self.position_number, 'space_type': self.space_type,
+                 'occupant': self.occupant,  'number_occupants': self.number_occupants}
+
+        return space
+
+    @ property
     def _is_vulenerable_space(self):
         '''
         Determines if a given space is an opponents vulnerable space
@@ -533,6 +618,6 @@ def play_single_game():
         6. update the gamestate
         7. handover
     '''
-    game = engine.Game(first_to=1)
+    game = engine.Game(match_to=1)
 
     pass

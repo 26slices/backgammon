@@ -1,8 +1,8 @@
-import engine
-import random
 import pygame as p
-from constants import TEST_LARGESE_MOVE, TEST_ONE_ON_BAR
-
+from time import sleep
+import engine
+import move_finder
+import random
 
 p.init()
 
@@ -28,12 +28,14 @@ def load_images():
             'images/{}_stone.png'.format(piece)), (WIDTH / 20, WIDTH / 15))
 
 
+screen = p.display.set_mode((WIDTH, HEIGHT))
+
+
 def main():
-    screen = p.display.set_mode((WIDTH, HEIGHT))
+
     clock = p.time.Clock()
     screen.fill(p.Color('dodgerblue'))
     gs = engine.GameState()
-    setattr(gs, 'board', TEST_LARGESE_MOVE)
     load_images()
     running = True
     while running:
@@ -43,6 +45,32 @@ def main():
         draw_GameState(screen, gs)
         clock.tick(MAX_FPS)
         p.display.flip()
+        sleep(2)
+        play_out_game(gs, clock)
+        sleep(4)
+        running = False
+
+
+def play_out_game(gs, clock):
+
+    while not gs.game_over:
+
+        print('Dice: {}'.format(gs.dice))
+        print('Is whites turn: {}'.format(gs.is_white_turn))
+        moves = gs.get_all_moves()
+        move = move_finder.find_random_move(moves)
+        draw_dice(screen, gs.dice)
+        clock.tick(MAX_FPS)
+        p.display.flip()
+        gs.make_move(move)
+        print(gs.print_board)
+        sleep(3)
+        screen.fill(p.Color('dodgerblue'))
+        draw_GameState(screen, gs)
+
+        setattr(gs, 'dice', gs.get_dice_value())
+
+    print(gs.turn_number)
 
 
 def draw_GameState(screen, gs):
@@ -76,6 +104,7 @@ def draw_board(screen):
         SCORE_BORDER + BOARD_WIDTH / 2, 0, BAR, HEIGHT))
     p.draw.rect(screen, border_colour, p.Rect(
         SCORE_BORDER + BAR + BOARD_WIDTH, 0, HOME_BOARD, HEIGHT))
+    draw_hash_brown(screen)
 
 
 def draw_pieces(screen, board):
@@ -93,7 +122,7 @@ def draw_outfield_pips(screen, board):
             space = [
                 space for space in board if space.position_number == position][0]
             if space.number_occupants > 0:
-                add_middle_border = BAR * int(position in range(6, 19))
+                add_middle_border = BAR * int(position in range(7, 19))
                 space_position = space.position_number
                 board_position = - 1 + int(
                     space_position <= 12) * space_position + (int(space_position > 12)) * (-1 * space_position + 25)
@@ -153,6 +182,45 @@ def draw_text_for_pips(screen, number_occupants, x_coord, y_coord):
         str(number_occupants), True, 'green')
     screen.blit(text,
                 (x_coord, y_coord + 10))
+
+
+def draw_hash_brown(screen):
+    font = p.font.SysFont('snellroundhand', 40)
+    hash_brown = font.render(
+        'Hash Brown', True, 'gold')
+    x_coord_1, y_coord_1 = (WIDTH / 5, HEIGHT / 2 - 50)
+    x_coord_2, y_coord_1 = (6 * WIDTH / 10 + BAR, HEIGHT / 2 - 50)
+    screen.blit(hash_brown,
+                (x_coord_1, y_coord_1))
+    screen.blit(hash_brown,
+                (x_coord_2, y_coord_1))
+
+    enterprises = font.render(
+        'Enterprises', True, 'gold')
+    x_coord_1, y_coord_2 = (WIDTH / 5 + 10, HEIGHT / 2)
+    x_coord_2, y_coord_2 = (6 * WIDTH / 10 + 10 + BAR, HEIGHT / 2)
+    screen.blit(enterprises,
+                (x_coord_1, y_coord_2))
+    screen.blit(enterprises,
+                (x_coord_2, y_coord_2))
+
+
+def draw_dice(screen, dice):
+    dice_0 = dice[0]
+    dice_1 = dice[1]
+    draw_one_dice(screen, dice_0, 'mediumorchid4')
+    draw_one_dice(screen, dice_1, 'aquamarine3')
+
+
+def draw_one_dice(screen, dice, colour):
+
+    dice_pos = (WIDTH / 2 + random.randint(-100, 100),
+                HEIGHT / 2 + random.randint(-100, 100))
+    p.draw.rect(screen, colour, p.Rect(dice_pos[0], dice_pos[1], 50, 50))
+
+    font = p.font.SysFont('arial', 20)
+    dice = font.render(str(dice), True, 'white')
+    screen.blit(dice, dice_pos)
 
 
 if __name__ == '__main__':
