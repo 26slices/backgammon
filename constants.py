@@ -1,36 +1,6 @@
 from engine import Space, WHITE, RED
 
 
-STARTING_BOARD = [Space(0, 'bearoff_zone', RED),
-                  Space(0, 'bar', WHITE),
-                  Space(1, 'outer', WHITE, 2),
-                  Space(2, 'outer'),
-                  Space(3, 'outer'),
-                  Space(4, 'outer'),
-                  Space(5, 'outer'),
-                  Space(6, 'outer', RED, 5),
-                  Space(7, 'outer'),
-                  Space(8, 'outer', RED, 3),
-                  Space(9, 'outer'),
-                  Space(10, 'outer'),
-                  Space(11, 'outer'),
-                  Space(12, 'outer', WHITE, 5),
-                  Space(13, 'outer', RED, 5),
-                  Space(14, 'outer'),
-                  Space(15, 'outer'),
-                  Space(16, 'outer'),
-                  Space(17, 'outer', WHITE, 3),
-                  Space(18, 'outer'),
-                  Space(19, 'outer', WHITE, 5),
-                  Space(20, 'outer'),
-                  Space(21, 'outer'),
-                  Space(22, 'outer'),
-                  Space(23, 'outer'),
-                  Space(24, 'outer', RED, 2),
-                  Space(25, 'bearoff_zone', WHITE),
-                  Space(25, 'bar', RED)
-                  ]
-
 TEST_LARGESE_MOVE_DICE_5_4 = [5, 4]
 TEST_LARGESE_MOVE = [Space(0, 'bearoff_zone', RED),
                      Space(0, 'bar', WHITE),

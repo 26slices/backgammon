@@ -18,6 +18,9 @@ ROWS = 2
 COLUMNS = 12
 MAX_FPS = 15
 IMAGES = {}
+DELAY = 0.1
+WHITE = engine.WHITE
+RED = engine.RED
 
 
 def load_images():
@@ -29,13 +32,13 @@ def load_images():
 
 
 screen = p.display.set_mode((WIDTH, HEIGHT))
+clock = p.time.Clock()
 
 
 def main():
 
-    clock = p.time.Clock()
     screen.fill(p.Color('dodgerblue'))
-    gs = engine.GameState()
+    gs = engine.GameState(match_to=11)
     load_images()
     running = True
     while running:
@@ -45,32 +48,79 @@ def main():
         draw_GameState(screen, gs)
         clock.tick(MAX_FPS)
         p.display.flip()
-        sleep(2)
-        play_out_game(gs, clock)
-        sleep(4)
+        play_out_match(gs)
         running = False
 
 
-def play_out_game(gs, clock):
+def play_out_match(gs):
+    play_out_game(gs)
+    while not gs.match_over:
+        gs.initialise_for_new_game()
+        play_out_game(gs)
 
-    while not gs.game_over:
 
-        print('Dice: {}'.format(gs.dice))
-        print('Is whites turn: {}'.format(gs.is_white_turn))
-        moves = gs.get_all_moves()
-        move = move_finder.find_random_move(moves)
-        draw_dice(screen, gs.dice)
-        clock.tick(MAX_FPS)
-        p.display.flip()
-        gs.make_move(move)
-        print(gs.print_board)
-        sleep(3)
-        screen.fill(p.Color('dodgerblue'))
-        draw_GameState(screen, gs)
+def play_out_game(gs):
+    '''
+    Plays out a single game in a match until someone has brought all their
+    pieces home or someone has passed on a double
+    '''
+    print('{} is going to start'.format(gs.turn))
+    play_out_dice_move(gs)
+
+    while not gs.bearoff_win:
+
+        play_out_decision(gs)
+        if gs.player_passes:
+            break
 
         setattr(gs, 'dice', gs.get_dice_value())
+        play_out_dice_move(gs)
 
     print(gs.turn_number)
+
+    if gs.bearoff_win:
+        gs.update_score_for_bearoff_win()
+    if not gs.match_over and gs.post_crawford is False and 1 in [gs.match_to - gs.score[WHITE], gs.match_to - gs.score[RED]]:
+        gs.crawford = True
+    elif not gs.match_over and gs.crawford is True:
+        gs.crawford = False
+        gs.post_crawford = True
+    print(gs.score)
+    sleep(5)
+
+
+def play_out_dice_move(gs):
+
+    print('Dice: {}'.format(gs.dice))
+    moves = gs.get_all_moves()
+    move = move_finder.find_random_move(moves)
+    draw_dice(screen, gs.dice, gs.is_white_turn)
+    sleep(DELAY)
+    clock.tick(MAX_FPS)
+    p.display.flip()
+    gs.make_move(move)
+    # print(gs.print_board)
+    screen.fill(p.Color('dodgerblue'))
+    draw_GameState(screen, gs)
+
+
+def play_out_decision(gs):
+    decisions = gs.get_all_decision_options()
+    decisions_readable = [decision.decision_type for decision in decisions]
+    print('Available decisions for {} are: {}'.format(
+        gs.turn, decisions_readable))
+    decision = move_finder.find_random_decision(decisions)
+    print('Decision chosen: {}'.format(decision.decision_type))
+    gs.make_cube_decision(decision)
+    if decision.decision_type == 'double':
+        decisions = gs.get_all_decision_options()
+        decisions_readable = [
+            decision.decision_type for decision in decisions]
+        print('Available decisions for {} are: {}'.format(
+            gs.turn, decisions_readable))
+        decision = move_finder.find_random_decision(decisions)
+        print('Decision chosen: {}'.format(decision.decision_type))
+        gs.make_cube_decision(decision)
 
 
 def draw_GameState(screen, gs):
@@ -185,7 +235,7 @@ def draw_text_for_pips(screen, number_occupants, x_coord, y_coord):
 
 
 def draw_hash_brown(screen):
-    font = p.font.SysFont('snellroundhand', 40)
+    font = p.font.SysFont('snellroundhand', 60)
     hash_brown = font.render(
         'Hash Brown', True, 'gold')
     x_coord_1, y_coord_1 = (WIDTH / 5, HEIGHT / 2 - 50)
@@ -205,22 +255,32 @@ def draw_hash_brown(screen):
                 (x_coord_2, y_coord_2))
 
 
-def draw_dice(screen, dice):
+def draw_dice(screen, dice, is_white_turn):
     dice_0 = dice[0]
     dice_1 = dice[1]
-    draw_one_dice(screen, dice_0, 'mediumorchid4')
-    draw_one_dice(screen, dice_1, 'aquamarine3')
+
+    draw_one_dice(screen, dice_0, is_white_turn, first_dice=True)
+    draw_one_dice(screen, dice_1, is_white_turn, first_dice=False)
 
 
-def draw_one_dice(screen, dice, colour):
+def draw_one_dice(screen, dice, is_white_turn, first_dice=True):
+    if is_white_turn:
+        colour = 'white'
+        font_colour = 'black'
+        right = 1
+    else:
+        colour = 'black'
+        font_colour = 'white'
+        right = 0
 
-    dice_pos = (WIDTH / 2 + random.randint(-100, 100),
-                HEIGHT / 2 + random.randint(-100, 100))
-    p.draw.rect(screen, colour, p.Rect(dice_pos[0], dice_pos[1], 50, 50))
+    dice_x_pos = WIDTH / 2 + (50 + int(first_dice) *
+                              100 + BAR) * (2 * right - 1)
+    dice_y_pos = HEIGHT / 2
+    p.draw.rect(screen, colour, p.Rect(dice_x_pos, dice_y_pos, 50, 50))
 
     font = p.font.SysFont('arial', 20)
-    dice = font.render(str(dice), True, 'white')
-    screen.blit(dice, dice_pos)
+    dice = font.render(str(dice), True, font_colour)
+    screen.blit(dice, (dice_x_pos, dice_y_pos))
 
 
 if __name__ == '__main__':
