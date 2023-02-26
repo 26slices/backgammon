@@ -2,18 +2,18 @@ import pygame as p
 from time import sleep
 import engine
 import move_finder
-import random
 
 p.init()
 
 BOARD_WIDTH = 1200
 SCORE_BORDER = 80
-BAR = 50
+BAR = 80
 HOME_BOARD = 80
-WIDTH = SCORE_BORDER + BOARD_WIDTH + BAR + HOME_BOARD
+WIDTH = HOME_BOARD + BOARD_WIDTH + BAR + SCORE_BORDER
 HEIGHT = 750
 WHITE_HOMEBOARD_START = (10, 10)
 BLACK_HOMEBOARD_START = (10, HEIGHT - 10)
+CUBE_SIZE = 75
 ROWS = 2
 COLUMNS = 12
 MAX_FPS = 15
@@ -37,8 +37,7 @@ clock = p.time.Clock()
 
 def main():
 
-    screen.fill(p.Color('dodgerblue'))
-    gs = engine.GameState(match_to=11)
+    gs = engine.GameState(match_to=7)
     load_images()
     running = True
     while running:
@@ -49,12 +48,13 @@ def main():
         clock.tick(MAX_FPS)
         p.display.flip()
         play_out_match(gs)
-        running = False
+        # running = False
 
 
 def play_out_match(gs):
-    play_out_game(gs)
+    play_out_game
     while not gs.match_over:
+
         gs.initialise_for_new_game()
         play_out_game(gs)
 
@@ -64,8 +64,11 @@ def play_out_game(gs):
     Plays out a single game in a match until someone has brought all their
     pieces home or someone has passed on a double
     '''
-    print('{} is going to start'.format(gs.turn))
+    draw_GameState(screen, gs)
+    sleep(DELAY / 3)
     play_out_dice_move(gs)
+    draw_GameState(screen, gs, dice=False)
+    sleep(DELAY)
 
     while not gs.bearoff_win:
 
@@ -74,34 +77,30 @@ def play_out_game(gs):
             break
 
         setattr(gs, 'dice', gs.get_dice_value())
+        draw_GameState(screen, gs)
+        sleep(DELAY / 3)
         play_out_dice_move(gs)
-
-    print(gs.turn_number)
+        draw_GameState(screen, gs, dice=False)
+        sleep(DELAY)
 
     if gs.bearoff_win:
         gs.update_score_for_bearoff_win()
-    if not gs.match_over and gs.post_crawford is False and 1 in [gs.match_to - gs.score[WHITE], gs.match_to - gs.score[RED]]:
-        gs.crawford = True
-    elif not gs.match_over and gs.crawford is True:
+        setattr(gs, 'dice', None)
+        draw_GameState(screen, gs)
+    if not gs.match_over and gs.crawford is True:
         gs.crawford = False
         gs.post_crawford = True
-    print(gs.score)
+    elif not gs.match_over and gs.post_crawford is False and 1 in [gs.match_to - gs.score[WHITE], gs.match_to - gs.score[RED]]:
+        gs.crawford = True
+
     sleep(5)
 
 
 def play_out_dice_move(gs):
-
-    print('Dice: {}'.format(gs.dice))
+    print(gs.dice)
     moves = gs.get_all_moves()
     move = move_finder.find_random_move(moves)
-    draw_dice(screen, gs.dice, gs.is_white_turn)
-    sleep(DELAY)
-    clock.tick(MAX_FPS)
-    p.display.flip()
     gs.make_move(move)
-    # print(gs.print_board)
-    screen.fill(p.Color('dodgerblue'))
-    draw_GameState(screen, gs)
 
 
 def play_out_decision(gs):
@@ -113,6 +112,9 @@ def play_out_decision(gs):
     print('Decision chosen: {}'.format(decision.decision_type))
     gs.make_cube_decision(decision)
     if decision.decision_type == 'double':
+        sleep(DELAY)
+        draw_GameState(screen, gs)
+        sleep(DELAY)
         decisions = gs.get_all_decision_options()
         decisions_readable = [
             decision.decision_type for decision in decisions]
@@ -123,9 +125,18 @@ def play_out_decision(gs):
         gs.make_cube_decision(decision)
 
 
-def draw_GameState(screen, gs):
+def draw_GameState(screen, gs, dice=True):
+    clock.tick(MAX_FPS)
+    p.display.flip()
+    screen.fill(p.Color('dodgerblue'))
     draw_board(screen)
-    draw_pieces(screen, gs.board)
+    draw_pieces(screen, gs.board, gs.cube_owner)
+    draw_cube(screen, gs.cube_value, gs.cube_owner,
+              gs.is_outstanding_cube_decision, gs.turn)
+    draw_score(screen, gs.score)
+    draw_match_to(screen, gs.match_to)
+    if dice is True:
+        draw_dice(screen, gs.dice, gs.is_white_turn)
 
 
 def draw_board(screen):
@@ -157,10 +168,10 @@ def draw_board(screen):
     draw_hash_brown(screen)
 
 
-def draw_pieces(screen, board):
+def draw_pieces(screen, board, cube_owner):
 
     draw_outfield_pips(screen, board)
-    draw_homeboard_pips(screen, board)
+    draw_homeboard_pips(screen, board, cube_owner)
     draw_bar_pips(screen, board)
 
 
@@ -189,7 +200,7 @@ def draw_outfield_pips(screen, board):
                         screen, number_occupants, x_coord, y_coord)
 
 
-def draw_homeboard_pips(screen, board):
+def draw_homeboard_pips(screen, board, cube_owner):
 
     homeboard_spaces = [
         space for space in board if space.space_type == 'bearoff_zone']
@@ -201,7 +212,8 @@ def draw_homeboard_pips(screen, board):
                 x_coord = 0
                 is_white_player = int(player == 'white')
                 y_coord = (HEIGHT - 60) * is_white_player + \
-                    (60 * pip) * (-2 * is_white_player + 1) - 15
+                    (60 * pip + 1.2 * CUBE_SIZE * int(cube_owner == player)) * \
+                    (-2 * is_white_player + 1) - 15
                 screen.blit(IMAGES[player], p.Rect(x_coord, y_coord, 0, 0))
             if number_occupants > 5:
                 draw_text_for_pips(
@@ -219,7 +231,7 @@ def draw_bar_pips(screen, board):
                 x_coord = SCORE_BORDER + BOARD_WIDTH / 2 - 10
                 is_white_player = int(player == 'white')
                 y_coord = HEIGHT / 2 - 50 + \
-                    (60 * pip + 100) * (-2 * is_white_player + 1)
+                    (60 * pip + 120) * (-2 * is_white_player + 1)
                 screen.blit(IMAGES[player], p.Rect(x_coord, y_coord, 0, 0))
             if number_occupants > 3:
                 draw_text_for_pips(
@@ -238,17 +250,17 @@ def draw_hash_brown(screen):
     font = p.font.SysFont('snellroundhand', 60)
     hash_brown = font.render(
         'Hash Brown', True, 'gold')
-    x_coord_1, y_coord_1 = (WIDTH / 5, HEIGHT / 2 - 50)
-    x_coord_2, y_coord_1 = (6 * WIDTH / 10 + BAR, HEIGHT / 2 - 50)
+    x_coord_1, y_coord_1 = (WIDTH / 5 - 40, HEIGHT / 2 - 50)
+    x_coord_2, y_coord_1 = (6 * WIDTH / 10 - 40 + BAR, HEIGHT / 2 - 50)
     screen.blit(hash_brown,
                 (x_coord_1, y_coord_1))
     screen.blit(hash_brown,
                 (x_coord_2, y_coord_1))
 
     enterprises = font.render(
-        'Enterprises', True, 'gold')
-    x_coord_1, y_coord_2 = (WIDTH / 5 + 10, HEIGHT / 2)
-    x_coord_2, y_coord_2 = (6 * WIDTH / 10 + 10 + BAR, HEIGHT / 2)
+        'Studios', True, 'gold')
+    x_coord_1, y_coord_2 = (WIDTH / 5, HEIGHT / 2)
+    x_coord_2, y_coord_2 = (6 * WIDTH / 10 + BAR, HEIGHT / 2)
     screen.blit(enterprises,
                 (x_coord_1, y_coord_2))
     screen.blit(enterprises,
@@ -256,11 +268,84 @@ def draw_hash_brown(screen):
 
 
 def draw_dice(screen, dice, is_white_turn):
+    if dice is None:
+        return
     dice_0 = dice[0]
     dice_1 = dice[1]
 
     draw_one_dice(screen, dice_0, is_white_turn, first_dice=True)
     draw_one_dice(screen, dice_1, is_white_turn, first_dice=False)
+
+
+def draw_cube(screen, cube_value, cube_owner, is_outstanding_cube_decision, turn_owner):
+
+    if is_outstanding_cube_decision is True:
+        print('is_outstanding_cube_decision')
+        x_pos = BOARD_WIDTH / 4 + HOME_BOARD
+        if turn_owner == WHITE:
+            print('turn_owner == WHITE')
+            y_pos = HEIGHT / 2 + CUBE_SIZE
+            flip_bool = False
+        else:
+            y_pos = HEIGHT / 2 - CUBE_SIZE
+            flip_bool = True
+
+    elif cube_owner is None:
+        x_pos = BAR + BOARD_WIDTH / 2 + (BAR - CUBE_SIZE) / 2
+        y_pos = HEIGHT / 2 - CUBE_SIZE / 2
+        cube_value = 64
+        flip_bool = False
+    elif cube_owner == WHITE:
+        x_pos = 0
+        y_pos = HEIGHT - CUBE_SIZE
+        flip_bool = False
+    elif cube_owner == RED:
+        x_pos = 0
+        y_pos = 0
+        flip_bool = True
+
+    p.draw.rect(screen, 'forestgreen', p.Rect(
+        x_pos, y_pos, CUBE_SIZE, CUBE_SIZE))
+
+    font = p.font.SysFont('arial', 7 * CUBE_SIZE // 8)
+    cube_value = font.render(str(int(cube_value)), True, 'white')
+    cube_value = p.transform.flip(cube_value, False, flip_bool)
+    screen.blit(cube_value, (x_pos, y_pos))
+
+
+def draw_score(screen, score):
+
+    white_score = int(score[WHITE])
+    red_score = int(score[RED])
+
+    score_x_pos = WIDTH - SCORE_BORDER
+    white_score_y_pos = HEIGHT - 80
+    red_score_y_pos = 0
+    font = p.font.SysFont('arial', 80)
+
+    p.draw.rect(screen, 'grey', p.Rect(score_x_pos, white_score_y_pos, 80, 80))
+    p.draw.rect(screen, 'grey', p.Rect(score_x_pos, red_score_y_pos, 80, 80))
+
+    white_score = font.render(str(white_score), True, 'white')
+    red_score = font.render(str(red_score), True, 'white')
+
+    screen.blit(white_score, (score_x_pos, white_score_y_pos))
+    screen.blit(red_score, (score_x_pos, red_score_y_pos))
+
+
+def draw_match_to(screen, match_to):
+
+    square_size = 80
+    x_pos = WIDTH - SCORE_BORDER
+    y_pos = HEIGHT / 2 - square_size / 2
+    font = p.font.SysFont('arial', 80)
+
+    p.draw.rect(screen, 'grey', p.Rect(
+        x_pos, y_pos, square_size, square_size))
+
+    match_to = font.render(str(match_to), True, 'white')
+
+    screen.blit(match_to, (x_pos, y_pos))
 
 
 def draw_one_dice(screen, dice, is_white_turn, first_dice=True):
